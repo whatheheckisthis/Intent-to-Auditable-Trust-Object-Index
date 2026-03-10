@@ -1,6 +1,6 @@
 # High-Assurance Security Controls Index
 
-This repository is organized as a **table-of-contents-style control index** for high-assurance engineering and assurance activities.
+This repository is organized as a control index for high-assurance engineering and assurance activities.
 
 It maps controls and evidence expectations across:
 

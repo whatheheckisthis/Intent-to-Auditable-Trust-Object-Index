@@ -1,38 +1,88 @@
-# Bash Encrypt-Decrpyt OpenSSL
+# IĀTO Series Versioning Index
 
-Simple encryption-decription method using Symmetric-key encryption by openssl
+## Start Here
 
-## Encrypt Command
+This README is a versioning index for the IĀTO series.
 
-> ./generate.sh ~/.ssh/id_rsa
+If you only read one section, read **Version Map** first.
 
-It will asking passphrase to set with the encryption process
+---
 
-> Input passphrase for encypt: < type the passphrase >
+## Version Map
 
-The encrypted file will saved on `files` directory.
+The IĀTO series is incremental:
 
-## Decrypt Command
+- **v3** → baseline milestone
+- **v4** → refinement milestone after v3
+- **v6** → current milestone and latest reference point
 
-### On the fly reading
+### Ordering Rule
 
-By running the command above, the result of decription value will be shown on the terminal.
+`v6` supersedes `v4`, and `v4` supersedes `v3`.
 
-> ./read.sh ./files/someFileName.dat
+### Continuity Rule
 
-It will ask for the passphrase
+All versions are part of one lineage, so comparisons should be made as **evolution**, not separate products.
 
-> Input passphrase read the content: < type the passphrase >
+---
 
-### Read with inline passphrase
+## How to Read Versions
 
-> ./read.sh ./files/someFileName.dat thepasscode
+### v3
 
-### Result on File
+- Foundation release for the series timeline.
+- Use mainly as historical baseline.
 
-You can also flush the result into file
+### v4
 
-> ./read.sh ./files/someFileName.dat > thefile.txt
+- Intermediate refinement in the same track.
+- Use for delta comparisons against v3 and v6.
 
-# License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+### v6
+
+- Current reference version.
+- Use as the default point for docs and discussion.
+
+---
+
+## Scope of This Index
+
+This document is intentionally limited to versioning clarity:
+
+- defines the relationship between `v3`, `v4`, and `v6`
+- states precedence and continuity rules
+- gives a simple reading order for series history
+
+Out of scope:
+
+- detailed operational tutorials
+- implementation deep dives
+- policy/process guidance outside version lineage
+
+---
+
+## Auditability Notes
+
+For any version claim, verify with:
+
+1. Git history and tags/commits.
+2. README statements for version precedence.
+3. Diff comparisons between target milestones.
+
+---
+
+## Reproducibility Notes
+
+When documenting or validating behavior across versions:
+
+1. Record the exact commit hash.
+2. Record the compared version pair (for example `v4` vs `v6`).
+3. Record the exact commands used during comparison.
+
+This keeps conclusions reproducible and reviewable.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

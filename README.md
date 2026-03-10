@@ -12,13 +12,13 @@ If you only read one section, read **Version Map** first.
 
 The IĀTO series is incremental:
 
-- **v3** → baseline milestone
-- **v4** → refinement milestone after v3
-- **v6** → current milestone and latest reference point
+- **v2** → baseline milestone
+- **v5** → refinement milestone after v3
+- **v7** → current milestone and latest reference point
 
 ### Ordering Rule
 
-`v6` supersedes `v4`, and `v4` supersedes `v3`.
+`v7` supersedes `v5`, and `v2` supersedes `v1`.
 
 ### Continuity Rule
 
@@ -28,17 +28,17 @@ All versions are part of one lineage, so comparisons should be made as **evoluti
 
 ## How to Read Versions
 
-### v3
+### v2
 
 - Foundation release for the series timeline.
 - Use mainly as historical baseline.
 
-### v4
+### v5
 
 - Intermediate refinement in the same track.
 - Use for delta comparisons against v3 and v6.
 
-### v6
+### v7
 
 - Current reference version.
 - Use as the default point for docs and discussion.
@@ -49,7 +49,7 @@ All versions are part of one lineage, so comparisons should be made as **evoluti
 
 This document is intentionally limited to versioning clarity:
 
-- defines the relationship between `v3`, `v4`, and `v6`
+- defines the relationship between `v2`, `v5`, and `v7`
 - states precedence and continuity rules
 - gives a simple reading order for series history
 

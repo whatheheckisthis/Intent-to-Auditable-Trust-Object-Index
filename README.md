@@ -9,26 +9,6 @@ It maps controls and evidence expectations across:
 - **E8 ML4** (Engineering maturity level 4 expectations)
 - **IATO series** (`v2`, `v5`, `v7`)
 
----
-
-## Table of Contents
-
-1. [Purpose and Audience](#purpose-and-audience)
-2. [Version Lineage (IATO v2, v5, v7)](#version-lineage-iato-v2-v5-v7)
-3. [Control Mapping Model](#control-mapping-model)
-4. [Cross-Framework Controls Matrix](#cross-framework-controls-matrix)
-5. [Auditability Requirements](#auditability-requirements)
-6. [Observability Requirements](#observability-requirements)
-7. [Continuous Monitoring Requirements](#continuous-monitoring-requirements)
-8. [Evidence and Artifact Index](#evidence-and-artifact-index)
-9. [Professional Practice Expectations](#professional-practice-expectations)
-10. [Scope](#scope)
-11. [Out of Scope](#out-of-scope)
-12. [Boundaries](#boundaries)
-13. [Non-Goals](#non-goals)
-14. [Common Criteria vs Operational Assurance](#common-criteria-vs-operational-assurance)
-15. [Glossary of Security Literature Terms](#glossary-of-security-literature-terms)
-16. [Change Control and Reproducibility](#change-control-and-reproducibility)
 
 ---
 
@@ -50,7 +30,7 @@ Primary audience:
 
 ---
 
-## Version Lineage (IATO v2, v5, v7)
+## Version Lineage 
 
 The IATO stream is incremental and should be interpreted as one lineage.
 
@@ -67,11 +47,11 @@ The IATO stream is incremental and should be interpreted as one lineage.
 
 - Use `v2` for historical baseline comparison.
 - Use `v5` for transition and maturity uplift analysis.
-- Use `v7` as default reference for active operations and assurance claims.
+- Use `v7` as the default reference for active operations and assurance claims.
 
 ---
 
-## Control Mapping Model
+## Control Mapping 
 
 Each control in this index is defined by:
 
@@ -89,7 +69,7 @@ Control IDs use a practical format:
 
 ---
 
-## Cross-Framework Controls Matrix
+## Controls Matrix
 
 | Control ID | Control Objective | ISM Mapping | SOC 2 Mapping | E8 ML4 Mapping | IATO v2 | IATO v5 | IATO v7 |
 |---|---|---|---|---|---|---|---|

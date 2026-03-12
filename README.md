@@ -9,9 +9,6 @@ It maps controls and evidence expectations across:
 - **E8 ML4** (Engineering maturity level 4 expectations)
 - **IATO series** (`v2`, `v5`, `v7`)
 
-
----
-
 ## Purpose and Audience
 
 This index supports teams building or evaluating security-sensitive tooling where:
@@ -27,8 +24,6 @@ Primary audience:
 - Platform/SRE teams
 - Internal audit and compliance teams
 - External assessors and accreditation stakeholders
-
----
 
 ## Version Lineage 
 
@@ -49,8 +44,6 @@ The IATO stream is incremental and should be interpreted as one lineage.
 - Use `v5` for transition and maturity uplift analysis.
 - Use `v7` as the default reference for active operations and assurance claims.
 
----
-
 ## Control Mapping 
 
 Each control in this index is defined by:
@@ -66,8 +59,6 @@ Control IDs use a practical format:
 - `CTRL-OBS-*` for observability
 - `CTRL-CON-*` for continuous monitoring
 - `CTRL-GOV-*` for governance/assurance practice
-
----
 
 ## Controls Matrix
 
@@ -86,7 +77,6 @@ Control IDs use a practical format:
 | CTRL-GOV-02 | Exception and waiver governance | Security risk acceptance controls | CC3 risk management | Exception lifecycle maturity | Partial | Full | Full + expiry/renewal automation |
 | CTRL-GOV-03 | Assurance reporting cadence | Security governance oversight | CC2 communication and reporting | KPI/KRI review rhythm | Partial | Full | Full + board-level reporting pack |
 
----
 
 ## Auditability Requirements
 
@@ -103,8 +93,6 @@ Control IDs use a practical format:
 - Access logs and privileged action logs
 - Incident records (when applicable)
 - Control test results and reviewer sign-off
-
----
 
 ## Observability Requirements
 
@@ -123,8 +111,6 @@ Control IDs use a practical format:
 - **Outcome** (success/failure + reason)
 - **Correlation ID** for cross-system traceability
 
----
-
 ## Continuous Monitoring Requirements
 
 ### Control lifecycle
@@ -142,8 +128,6 @@ Control IDs use a practical format:
 - **Monthly:** assurance summary, exception status review
 - **Quarterly:** framework mapping recalibration and maturity assessment
 
----
-
 ## Evidence and Artifact Index
 
 | Evidence Type | Description | Owner | Retention | Review Frequency |
@@ -155,7 +139,6 @@ Control IDs use a practical format:
 | Access governance evidence | Access review and privilege attestation outcomes | IAM/Security | 7 years | Quarterly |
 | Vulnerability management report | Detection, prioritization, remediation status | Security + Engineering | 3 years | Weekly |
 
----
 
 ## Professional Practice Expectations
 
@@ -166,8 +149,6 @@ High-assurance professional practice requires:
 - **Documentation quality:** procedures are versioned, reviewable, and linked to evidence.
 - **Repeatable validation:** control tests run consistently and produce reviewable outputs.
 - **Ethical and legal alignment:** practice aligns to policy, contract, and regulatory obligations.
-
----
 
 ## Scope
 
@@ -202,8 +183,6 @@ This index does **not** aim to:
 - Substitute assessor judgment
 - Serve as a complete secure development standard
 
----
-
 ## Common Criteria vs Operational Assurance
 
 To avoid category confusion:
@@ -213,30 +192,30 @@ To avoid category confusion:
 
 This repository focuses on **operational assurance practice** and framework-aligned control traceability, not product certification under Common Criteria.
 
----
+## Security Literature
 
-## Glossary of Security Literature Terms
+| Term                      | Definition                                                                                    |
+| ------------------------- | --------------------------------------------------------------------------------------------- |
+| **Assurance Case**        | Structured argument, supported by evidence, that a system is acceptably secure for a context. |
+| **Auditability**          | Ability to reconstruct actions and decisions from trustworthy records.                        |
+| **Attestation**           | Formal statement asserting control status, often signed by an accountable role.               |
+| **Control Objective**     | Specific security outcome a control is intended to achieve.                                   |
+| **Control Owner**         | Role accountable for design and operation of a control.                                       |
+| **Continuous Monitoring** | Ongoing collection and analysis of security-relevant signals.                                 |
+| **Evidence Artifact**     | Tangible output used to validate that a control exists and works.                             |
+| **Exception (Waiver)**    | Approved, time-bounded deviation from required control behavior.                              |
+| **High Assurance**        | Elevated confidence based on rigorous design, operation, and verification.                    |
+| **IATO**                  | Versioned internal assurance track used in this repository (`v2`, `v5`, `v7`).                |
+| **KPI/KRI**               | Key performance/risk indicators used to track effectiveness and exposure.                     |
+| **Observability**         | Ability to infer internal system state from emitted telemetry.                                |
+| **Policy-as-Code**        | Machine-enforceable policy implementation in CI/CD or runtime controls.                       |
+| **Provenance**            | Verifiable origin and transformation history of software artifacts.                           |
+| **Residual Risk**         | Risk remaining after control implementation.                                                  |
+| **SOC 2**                 | Attestation framework based on trust services criteria.                                       |
+| **ISM**                   | Australian government security control guidance framework.                                    |
+| **Traceability**          | Ability to link requirements, changes, controls, and evidence end-to-end.                     |
 
-- **Assurance Case:** structured argument, supported by evidence, that a system is acceptably secure for a context.
-- **Auditability:** ability to reconstruct actions and decisions from trustworthy records.
-- **Attestation:** formal statement asserting control status, often signed by an accountable role.
-- **Control Objective:** specific security outcome a control is intended to achieve.
-- **Control Owner:** role accountable for design and operation of a control.
-- **Continuous Monitoring:** ongoing collection and analysis of security-relevant signals.
-- **Evidence Artifact:** tangible output used to validate that a control exists and works.
-- **Exception (Waiver):** approved, time-bounded deviation from required control behavior.
-- **High Assurance:** elevated confidence based on rigorous design, operation, and verification.
-- **IATO:** versioned internal assurance track used in this repository (`v2`, `v5`, `v7`).
-- **KPI/KRI:** key performance/risk indicators used to track effectiveness and exposure.
-- **Observability:** ability to infer internal system state from emitted telemetry.
-- **Policy-as-Code:** machine-enforceable policy implementation in CI/CD or runtime controls.
-- **Provenance:** verifiable origin and transformation history of software artifacts.
-- **Residual Risk:** risk remaining after control implementation.
-- **SOC 2:** attestation framework based on trust services criteria.
-- **ISM:** Australian government security control guidance framework.
-- **Traceability:** ability to link requirements, changes, controls, and evidence end-to-end.
 
----
 
 ## Change Control and Reproducibility
 

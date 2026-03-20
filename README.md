@@ -1,15 +1,32 @@
 # IĀTŌ — High-Assurance Security Controls Index
 
+[![Controls](https://img.shields.io/badge/Controls-ISM%20%7C%20SOC2%20%7C%20E8%20ML4-0A66C2?style=flat-square)](https://github.com/whatheheckisthis/Professional-Practice/blob/main/docs/DELIVERY.md)
+[![Assurance](https://img.shields.io/badge/Assurance-Auditable%20%2B%20Reproducible-2E7D32?style=flat-square)](https://github.com/whatheheckisthis/Professional-Practice/blob/main/docs/ETHOS.md)
+[![Practice](https://img.shields.io/badge/Practice-SecDevOps%20Contractor-333333?style=flat-square)](https://github.com/whatheheckisthis/Professional-Practice)
+
+---
+
 ## Intent
 
-This repository is a control index for high-assurance engineering and assurance activities. It is an operating reference, not a certification package. The scope is framework-aligned control traceability across active delivery and operations workflows — not product evaluation under Common Criteria.
+This repository is the control index for the IĀTŌ assurance programme. It is an operating
+reference, not a certification package. The scope is framework-aligned control traceability
+across active delivery and operations workflows — not product evaluation under Common Criteria.
+
+The IĀTŌ Index is the technical proof layer for the practice defined at
+[`whatheheckisthis/Professional-Practice`](https://github.com/whatheheckisthis/Professional-Practice).
+Read the following documents for the engagement model, architectural philosophy, and delivery
+artefacts that this index supports:
+
+- [`Professional-Practice / docs/ETHOS.md`](https://github.com/whatheheckisthis/Professional-Practice/blob/main/docs/ETHOS.md) — architectural philosophy and stack rationale
+- [`Professional-Practice / docs/DELIVERY.md`](https://github.com/whatheheckisthis/Professional-Practice/blob/main/docs/DELIVERY.md) — engagement model, delivery artefacts, and GRC control mappings
+- [`Professional-Practice / README.md`](https://github.com/whatheheckisthis/Professional-Practice/blob/main/README.md) — practice statement and contractor engagement scope
 
 Controls and evidence expectations are mapped across:
 
-- **ISM** — Australian Information Security Manual
-- **SOC 2** — Trust Services Criteria
-- **E8 ML4** — Essential Eight Maturity Level 4
-- **IĀTŌ series** — `v2`, `v5`, `v7`
+- ISM — Australian Information Security Manual
+- SOC 2 — Trust Services Criteria
+- E8 ML4 — Essential Eight Maturity Level 4
+- IĀTŌ series — v2, v5, v7
 
 ---
 
@@ -38,15 +55,13 @@ IĀTŌ Control Index Ethos
     └── v7 → current reference (default for active operations)
 ```
 
----
-
 ## Operating Themes
 
-- Control ownership is explicit — each control has a named accountable role.
-- Evidence is reproducible — every assurance claim traces to a verifiable artefact.
-- Separation of duties is enforced — no single actor defines, approves, and deploys high-risk changes.
-- Monitoring cadences are fixed — not ad hoc.
-- Documentation is versioned and linked to evidence — not narrative.
+* Control ownership is explicit — each control has a named accountable role.
+* Evidence is reproducible — every assurance claim traces to a verifiable artefact.
+* Separation of duties is enforced — no single actor defines, approves, and deploys high-risk changes.
+* Monitoring cadences are fixed — not ad hoc.
+* Documentation is versioned and linked to evidence — not narrative.
 
 ---
 
@@ -56,11 +71,11 @@ The IĀTŌ stream is a single incremental lineage. Versions are not independent 
 
 | Version | Role |
 |---|---|
-| `v2` | Historical baseline — use for comparison only |
-| `v5` | Transition reference — use for maturity uplift analysis |
-| `v7` | Active reference — default for operations and assurance claims |
+| v2 | Historical baseline — use for comparison only |
+| v5 | Transition reference — use for maturity uplift analysis |
+| v7 | Active reference — default for operations and assurance claims |
 
-Version precedence: `v7` supersedes `v5`; `v5` supersedes `v2`.
+Version precedence: v7 supersedes v5; v5 supersedes v2.
 
 ---
 
@@ -68,10 +83,10 @@ Version precedence: `v7` supersedes `v5`; `v5` supersedes `v2`.
 
 Each control is defined by four fields:
 
-1. **Control objective** — what risk is reduced
-2. **Implementation expectation** — what must exist in practice
-3. **Evidence expectation** — what proves it works
-4. **Mapped references** — ISM, SOC 2, E8 ML4, IĀTŌ version
+- Control objective — what risk is reduced
+- Implementation expectation — what must exist in practice
+- Evidence expectation — what proves it works
+- Mapped references — ISM, SOC 2, E8 ML4, IĀTŌ version
 
 ---
 
@@ -96,9 +111,10 @@ Each control is defined by four fields:
 
 ## Auditability Requirements
 
-All security-relevant actions are attributable to identity, time, and source. Audit records are tamper-evident. Every control claim has at least one reproducible evidence artefact.
+All security-relevant actions are attributable to identity, time, and source. Audit records are
+tamper-evident. Every control claim has at least one reproducible evidence artefact.
 
-### Minimum evidence set
+**Minimum evidence set:**
 
 - Change request and approval trail
 - Deployment record and commit hash
@@ -110,9 +126,10 @@ All security-relevant actions are attributable to identity, time, and source. Au
 
 ## Observability Requirements
 
-Structured logs, metrics, and traces are enabled for critical paths. Service and control health indicators are measurable and versioned. Alert routing and escalation paths are explicit and tested.
+Structured logs, metrics, and traces are enabled for critical paths. Service and control health
+indicators are measurable and versioned. Alert routing and escalation paths are explicit and tested.
 
-### Mandatory telemetry dimensions
+**Mandatory telemetry dimensions:**
 
 | Dimension | Description |
 |---|---|
@@ -127,7 +144,7 @@ Structured logs, metrics, and traces are enabled for critical paths. Service and
 
 ## Continuous Monitoring
 
-### Control lifecycle
+**Control lifecycle:**
 
 1. Define control and risk linkage.
 2. Implement measurable control checks.
@@ -135,7 +152,7 @@ Structured logs, metrics, and traces are enabled for critical paths. Service and
 4. Track exceptions with owner and due date.
 5. Re-test and close with evidence.
 
-### Monitoring cadences
+**Monitoring cadences:**
 
 | Cadence | Scope |
 |---|---|
@@ -163,13 +180,15 @@ Structured logs, metrics, and traces are enabled for critical paths. Service and
 
 For any assurance claim derived from this index, record:
 
-1. Commit hash and branch reference
-2. Control IDs involved
-3. Framework mapping references used
-4. Exact commands or procedures executed
-5. Date, environment, and responsible reviewer
+- Commit hash and branch reference
+- Control IDs involved
+- Framework mapping references used
+- Exact commands or procedures executed
+- Date, environment, and responsible reviewer
 
-This ensures outcomes remain reviewable, reproducible, and audit-ready. Control IDs and cross-walk references align to `docs/governance/control-crosswalk.csv`.
+This ensures outcomes remain reviewable, reproducible, and audit-ready. Control IDs and
+cross-walk references align to `docs/governance/control-crosswalk.csv` and
+[`Professional-Practice / docs/DELIVERY.md`](https://github.com/whatheheckisthis/Professional-Practice/blob/main/docs/DELIVERY.md).
 
 ---
 
@@ -197,7 +216,11 @@ This ensures outcomes remain reviewable, reproducible, and audit-ready. Control 
 
 ## Common Criteria vs Operational Assurance
 
-These are distinct categories. Common Criteria is a product security evaluation framework — assurance packages, evaluated configurations, certification outcomes. This index addresses operational assurance: ongoing governance, telemetry, control operation, and evidence quality in live environments. The two are not interchangeable and should not be treated as equivalent evidence bodies.
+These are distinct categories. Common Criteria is a product security evaluation framework —
+assurance packages, evaluated configurations, certification outcomes. This index addresses
+operational assurance: ongoing governance, telemetry, control operation, and evidence quality
+in live environments. The two are not interchangeable and should not be treated as equivalent
+evidence bodies.
 
 ---
 
@@ -205,19 +228,19 @@ These are distinct categories. Common Criteria is a product security evaluation 
 
 | Term | Definition |
 |---|---|
-| **Assurance Case** | Structured argument, supported by evidence, that a system is acceptably secure for a given context |
-| **Attestation** | Formal statement asserting control status, typically signed by an accountable role |
-| **Auditability** | Ability to reconstruct actions and decisions from trustworthy records |
-| **Control Objective** | Specific security outcome a control is intended to achieve |
-| **Control Owner** | Role accountable for design and operation of a control |
-| **Continuous Monitoring** | Ongoing collection and analysis of security-relevant signals |
-| **Evidence Artefact** | Tangible output used to validate that a control exists and functions |
-| **Exception (Waiver)** | Approved, time-bounded deviation from required control behaviour |
-| **High Assurance** | Elevated confidence based on rigorous design, operation, and verification |
-| **IĀTŌ** | Versioned internal assurance track used in this repository (`v2`, `v5`, `v7`) |
-| **KPI/KRI** | Key performance and risk indicators used to track effectiveness and exposure |
-| **Observability** | Ability to infer internal system state from emitted telemetry |
-| **Policy-as-Code** | Machine-enforceable policy implementation in CI/CD or runtime controls |
-| **Provenance** | Verifiable origin and transformation history of software artefacts |
-| **Residual Risk** | Risk remaining after control implementation |
-| **Traceability** | Ability to link requirements, changes, controls, and evidence end-to-end |
+| Assurance Case | Structured argument, supported by evidence, that a system is acceptably secure for a given context |
+| Attestation | Formal statement asserting control status, typically signed by an accountable role |
+| Auditability | Ability to reconstruct actions and decisions from trustworthy records |
+| Control Objective | Specific security outcome a control is intended to achieve |
+| Control Owner | Role accountable for design and operation of a control |
+| Continuous Monitoring | Ongoing collection and analysis of security-relevant signals |
+| Evidence Artefact | Tangible output used to validate that a control exists and functions |
+| Exception (Waiver) | Approved, time-bounded deviation from required control behaviour |
+| High Assurance | Elevated confidence based on rigorous design, operation, and verification |
+| IĀTŌ | Versioned internal assurance track used in this repository (v2, v5, v7) |
+| KPI/KRI | Key performance and risk indicators used to track effectiveness and exposure |
+| Observability | Ability to infer internal system state from emitted telemetry |
+| Policy-as-Code | Machine-enforceable policy implementation in CI/CD or runtime controls |
+| Provenance | Verifiable origin and transformation history of software artefacts |
+| Residual Risk | Risk remaining after control implementation |
+| Traceability | Ability to link requirements, changes, controls, and evidence end-to-end |

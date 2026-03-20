@@ -26,7 +26,6 @@ Controls and evidence expectations are mapped across:
 - ISM — Australian Information Security Manual
 - SOC 2 — Trust Services Criteria
 - E8 ML4 — Essential Eight Maturity Level 4
-- IĀTŌ series — v2, v5, v7
 
 ---
 
@@ -74,8 +73,6 @@ The IĀTŌ stream is a single incremental lineage. Versions are not independent 
 | v2 | Historical baseline | [Intent-to-Auditable-Trust-Object-v2](https://github.com/whatheheckisthis/Intent-to-Auditable-Trust-Object-v2) |
 | v5 | Transition reference | [Intent-to-Auditable-Trust-Object-v5](https://github.com/whatheheckisthis/Intent-to-Auditable-Trust-Object-v5) |
 | v7 | Active reference | [Intent-to-Auditable-Trust-Object-v7](https://github.com/whatheheckisthis/Intent-to-Auditable-Trust-Object-v7) |
-
-Version precedence: v7 supersedes v5; v5 supersedes v2.
 
 ---
 
@@ -226,7 +223,6 @@ evidence bodies.
 | Evidence Artefact | Tangible output used to validate that a control exists and functions |
 | Exception (Waiver) | Approved, time-bounded deviation from required control behaviour |
 | High Assurance | Elevated confidence based on rigorous design, operation, and verification |
-| IĀTŌ | Versioned internal assurance track used in this repository (v2, v5, v7) |
 | KPI/KRI | Key performance and risk indicators used to track effectiveness and exposure |
 | Observability | Ability to infer internal system state from emitted telemetry |
 | Policy-as-Code | Machine-enforceable policy implementation in CI/CD or runtime controls |

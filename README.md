@@ -69,43 +69,32 @@ IĀTŌ Control Index Ethos
 
 The IĀTŌ stream is a single incremental lineage. Versions are not independent releases.
 
-| Version | Role |
-|---|---|
-| v2 | Historical baseline — use for comparison only |
-| v5 | Transition reference — use for maturity uplift analysis |
-| v7 | Active reference — default for operations and assurance claims |
+| Version | Role | Repo |
+|---|---|---|
+| v2 | Historical baseline | [Intent-to-Auditable-Trust-Object-v2](https://github.com/whatheheckisthis/Intent-to-Auditable-Trust-Object-v2) |
+| v5 | Transition reference | [Intent-to-Auditable-Trust-Object-v5](https://github.com/whatheheckisthis/Intent-to-Auditable-Trust-Object-v5) |
+| v7 | Active reference | [Intent-to-Auditable-Trust-Object-v7](https://github.com/whatheheckisthis/Intent-to-Auditable-Trust-Object-v7) |
 
 Version precedence: v7 supersedes v5; v5 supersedes v2.
 
 ---
 
-## Control Structure
-
-Each control is defined by four fields:
-
-- Control objective — what risk is reduced
-- Implementation expectation — what must exist in practice
-- Evidence expectation — what proves it works
-- Mapped references — ISM, SOC 2, E8 ML4, IĀTŌ version
-
----
-
 ## Controls Matrix
 
-| Control ID | Control Objective | ISM | SOC 2 | E8 ML4 | v2 | v5 | v7 |
-|---|---|---|---|---|---|---|---|
-| CTRL-AUD-01 | Immutable audit logging | Event logging, integrity protection | CC7, CC6 | Managed telemetry baseline | Partial | Full | Full + automated verification |
-| CTRL-AUD-02 | Change traceability | Configuration and change management | CC8 | Versioned change gates | Partial | Full | Full + policy-as-code |
-| CTRL-AUD-03 | Evidence retention lifecycle | Records management, retention | CC2/CC3 | Evidence quality controls | Partial | Full | Full + retention enforcement |
-| CTRL-OBS-01 | End-to-end service telemetry | Monitoring and event collection | CC7 | SLO-driven instrumentation | Partial | Full | Full + coverage SLI tracking |
-| CTRL-OBS-02 | Alert fidelity and triage | Incident detection requirements | CC7 | Runbook maturity and response loops | Partial | Full | Full + false-positive tuning |
-| CTRL-OBS-03 | Time synchronisation integrity | Time source security | CC7 | Correlation-ready data quality | Full | Full | Full + drift alerts |
-| CTRL-CON-01 | Continuous control validation | Security assessment cadence | CC4/CC5 | Automated assurance pipelines | Partial | Full | Full + scheduled attestation |
-| CTRL-CON-02 | Vulnerability and exposure management | Vulnerability management | CC7 | Risk burn-down governance | Partial | Full | Full + risk SLA enforcement |
-| CTRL-CON-03 | Dependency and supply-chain monitoring | Software assurance and provenance | CC6/CC7 | Build provenance and SBOM discipline | Partial | Full | Full + signed provenance checks |
-| CTRL-GOV-01 | Segregation of duties | Privileged access governance | CC6 | Multi-party approval gates | Partial | Full | Full + preventive controls |
-| CTRL-GOV-02 | Exception and waiver governance | Security risk acceptance controls | CC3 | Exception lifecycle maturity | Partial | Full | Full + expiry/renewal automation |
-| CTRL-GOV-03 | Assurance reporting cadence | Security governance oversight | CC2 | KPI/KRI review rhythm | Partial | Full | Full + board-level reporting pack |
+| Control ID | Objective | ISM | SOC 2 | E8 ML4 |
+|---|---|---|---|---|
+| CTRL-AUD-01 | Immutable audit logging | Event logging | CC6, CC7 | ML4 |
+| CTRL-AUD-02 | Change traceability | Change management | CC8 | ML4 |
+| CTRL-AUD-03 | Evidence retention | Records management | CC2, CC3 | ML4 |
+| CTRL-OBS-01 | Service telemetry | Monitoring | CC7 | ML4 |
+| CTRL-OBS-02 | Alert fidelity | Incident detection | CC7 | ML4 |
+| CTRL-OBS-03 | Time synchronisation | Time source security | CC7 | ML3 |
+| CTRL-CON-01 | Continuous control validation | Assessment cadence | CC4, CC5 | ML4 |
+| CTRL-CON-02 | Vulnerability management | Vuln management | CC7 | ML4 |
+| CTRL-CON-03 | Supply-chain monitoring | Software provenance | CC6, CC7 | ML4 |
+| CTRL-GOV-01 | Segregation of duties | Privileged access | CC6 | ML4 |
+| CTRL-GOV-02 | Exception governance | Risk acceptance | CC3 | ML4 |
+| CTRL-GOV-03 | Assurance reporting | Governance oversight | CC2 | ML4 |
 
 ---
 
@@ -187,7 +176,7 @@ For any assurance claim derived from this index, record:
 - Date, environment, and responsible reviewer
 
 This ensures outcomes remain reviewable, reproducible, and audit-ready. Control IDs and
-cross-walk references align to `docs/governance/control-crosswalk.csv` and
+cross-walk references align to [`docs/governance/control-crosswalk.csv`](https://github.com/whatheheckisthis/Professional-Practice/blob/6cc883965fb396be931307231f0487ce9ceb9147/docs/governance/control-crosswalk.csv#L4) and
 [`Professional-Practice / docs/DELIVERY.md`](https://github.com/whatheheckisthis/Professional-Practice/blob/main/docs/DELIVERY.md).
 
 ---
@@ -232,7 +221,7 @@ evidence bodies.
 | Attestation | Formal statement asserting control status, typically signed by an accountable role |
 | Auditability | Ability to reconstruct actions and decisions from trustworthy records |
 | Control Objective | Specific security outcome a control is intended to achieve |
-| Control Owner | Role accountable for design and operation of a control |
+| Control Owner | Role accountable for the design and operation of a control |
 | Continuous Monitoring | Ongoing collection and analysis of security-relevant signals |
 | Evidence Artefact | Tangible output used to validate that a control exists and functions |
 | Exception (Waiver) | Approved, time-bounded deviation from required control behaviour |

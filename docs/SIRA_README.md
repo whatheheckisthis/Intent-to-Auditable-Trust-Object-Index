@@ -72,6 +72,18 @@ Read those two documents first. Everything else in
 this repository is the operational substrate that
 supports them.
 
+## Governance directionality
+
+SIRA is a governed delivery instance, not the
+governing layer. The authoritative architectural
+philosophy and engagement model remain in
+`Professional-Practice/docs/ETHOS.md` and
+`Professional-Practice/docs/DELIVERY.md`. SIRA
+implements and evidences those standards through
+quantitative artefacts (for example, the compliance
+crosswalk, risk committee register, and run logs)
+without redefining the governing framework.
+
 ## Methodology
 
 SIRA executes scenario-conditioned stress testing across governed parameters declared in

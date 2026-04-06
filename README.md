@@ -50,6 +50,27 @@ they define.
 
 ---
 
+## Governance directionality
+
+This repository is a governed instance of the
+Professional-Practice architecture. Governance
+direction is one-way: instance repositories cite the
+governing layer's primary documents; governing
+documents are not replaced by instance-specific
+variants in this repository.
+
+In practical terms:
+
+- ETHOS.md and DELIVERY.md remain authoritative in
+  `Professional-Practice`.
+- IĀTŌ and SIRA repositories reference those documents
+  as the governing source.
+- Evidence artefacts (controls matrices, crosswalks,
+  notebooks, audit logs) remain implementation-layer
+  outputs and do not redefine the governing model.
+
+---
+
 ## Two-layer assurance architecture
 
 SIRA (Stochastic Invalidation and Risk Architecture)

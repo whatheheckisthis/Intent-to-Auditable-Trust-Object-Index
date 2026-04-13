@@ -118,21 +118,21 @@ Retention periods are set against ISM record-keeping guidance and Privacy Act 19
 
 | Control | Artefact | Location |
 |---|---|---|
-| CTRL-AUD-01 | Session logs | [`audit/session/*.log`](./audit/session/) |
-| CTRL-AUD-02 | Config history | [`config/sira.toml`](./config/sira.toml) |
-| CTRL-AUD-03 | Compliance crosswalk | [`docs/COMPLIANCE_CROSSWALK.csv`](./docs/COMPLIANCE_CROSSWALK.csv) |
-| CTRL-OBS-01 | Execution logs | [`run_all.R`](./run_all.R) |
-| CTRL-OBS-02 | Signal outputs | [`output/*`](./output/) |
-| CTRL-CON-01 | Gap register | [`docs/SIRA_EVIDENCE_GAP_REGISTER.md`](./docs/SIRA_EVIDENCE_GAP_REGISTER.md) |
-| CTRL-CON-03 | Data manifest | [`data/manifest/data_manifest.toml`](./data/manifest/data_manifest.toml) |
-| CTRL-GOV-01 | Non-goals register | [`notebooks/*`](./notebooks/) |
-| CTRL-GOV-02 | Risk register | [`docs/RISK_COMMITTEE.md`](./docs/RISK_COMMITTEE.md) |
+| CTRL-AUD-01 | Session logs | `audit/session/*.log`|
+| CTRL-AUD-02 | Config history | `config/sira.toml`|
+| CTRL-AUD-03 | Compliance crosswalk | `docs/COMPLIANCE_CROSSWALK.csv`|
+| CTRL-OBS-01 | Execution logs | `run_all.R`|
+| CTRL-OBS-02 | Signal outputs | `output/*`|
+| CTRL-CON-01 | Gap register | `docs/SIRA_EVIDENCE_GAP_REGISTER.md`|
+| CTRL-CON-03 | Data manifest | `data/manifest/data_manifest.toml`|
+| CTRL-GOV-01 | Non-goals register | `notebooks/*`|
+| CTRL-GOV-02 | Risk register | `docs/RISK_COMMITTEE.md`|
 
 ---
 
 ## Evidence Gap Register
 
-Tracked in [`docs/SIRA_EVIDENCE_GAP_REGISTER.md`](./docs/SIRA_EVIDENCE_GAP_REGISTER.md). Append-only via EvidenceService — manual edits are rejected at the reconciliation layer. CRITICAL items block release. HIGH items warn at validation.
+Tracked in `docs/SIRA_EVIDENCE_GAP_REGISTER.md`. Append-only via EvidenceService — manual edits are rejected at the reconciliation layer. CRITICAL items block release. HIGH items warn at validation.
 
 | ID | Severity | Title | Control | Status |
 |---|---|---|---|---|

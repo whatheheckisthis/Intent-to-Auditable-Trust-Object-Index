@@ -1,0 +1,67 @@
+# File: podman-compose.yml
+# Role: Podman Compose service graph for deterministic inter-container orchestration.
+# Constraints enforced: DAG via depends_on, Podman-compatible compose spec, isolated internal network, deterministic volume flow.
+# Upstream: build-containers
+# Downstream: sign-and-emit
+version: "3.9"
+
+services:
+  governance-policy:
+    image: localhost/assurance/governance-policy:deterministic
+    command: ["/app/entrypoint", "/inputs/pipeline.config.json", "/evidence/governance-policy.json"]
+    read_only: true
+    network_mode: "none"
+    volumes:
+      - assurance-evidence-store:/evidence:rw
+      - ./pipeline:/inputs:ro
+
+  cross-framework-alignment:
+    image: localhost/assurance/cross-framework-alignment:deterministic
+    command: ["/app/entrypoint", "/inputs/pipeline.config.json", "/evidence/governance-policy.json", "/evidence/cross-framework-alignment.json"]
+    read_only: true
+    network_mode: "none"
+    depends_on:
+      - governance-policy
+    volumes:
+      - assurance-evidence-store:/evidence:rw
+      - ./pipeline:/inputs:ro
+
+  execution-orchestration:
+    image: localhost/assurance/execution-orchestration:deterministic
+    command: ["/app/entrypoint", "/inputs/pipeline.config.json", "/evidence/cross-framework-alignment.json", "/evidence/execution-orchestration.json"]
+    read_only: true
+    network_mode: "none"
+    depends_on:
+      - cross-framework-alignment
+    volumes:
+      - assurance-evidence-store:/evidence:rw
+      - ./pipeline:/inputs:ro
+
+  validation-analytics:
+    image: localhost/assurance/validation-analytics:deterministic
+    command: ["/app/entrypoint", "/inputs/pipeline.config.json", "/evidence/execution-orchestration.json", "/evidence/validation-analytics.json"]
+    read_only: true
+    network_mode: "none"
+    depends_on:
+      - execution-orchestration
+    volumes:
+      - assurance-evidence-store:/evidence:rw
+      - ./pipeline:/inputs:ro
+
+  sign-and-emit:
+    image: localhost/assurance/validation-analytics:deterministic
+    command: ["/app/sign-and-emit", "/inputs/pipeline.config.json", "/signing-key/ed25519.key", "/evidence/validation-analytics.json", "/evidence/signed-s-out.json"]
+    read_only: true
+    network_mode: "none"
+    depends_on:
+      - validation-analytics
+    volumes:
+      - assurance-evidence-store:/evidence:rw
+      - signing-key-volume:/signing-key:ro
+      - ./pipeline:/inputs:ro
+
+volumes:
+  assurance-evidence-store:
+    name: assurance-evidence-store
+  signing-key-volume:
+    name: signing-key-volume

@@ -1,0 +1,27 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "pipeline/pipeline.config.json",
+  "__role": "Schema-bound deterministic pipeline configuration source of truth.",
+  "__constraints_enforced": [
+    "declared-timeout-constants",
+    "declared-output-scope",
+    "declared-signing-key-mount",
+    "single-source-of-truth"
+  ],
+  "__upstream": "ROOT",
+  "__downstream": "validate-inputs",
+  "pipeline": {
+    "timeoutsMinutes": {
+      "build-containers": 20,
+      "run-governance-policy": 15,
+      "run-cross-framework-alignment": 15,
+      "run-execution-orchestration": 15,
+      "run-validation-analytics": 15,
+      "sign-and-emit": 10
+    },
+    "outputScopeVolume": "assurance-evidence-store",
+    "signingKeyMountPath": "/signing-key/ed25519.key",
+    "inputSchemaPath": "schemas/s-in.schema.json",
+    "outputSchemaPath": "schemas/s-out.schema.json"
+  }
+}

@@ -1,0 +1,157 @@
+# File: .github/workflows/assurance-pipeline.yml
+# Role: Deterministic GitHub Actions DAG for assurance pipeline execution.
+# Constraints enforced: DAG-only job graph, pinned action SHAs, fail-fast execution, no workflow/job env blocks, schema-bound timeout propagation, Podman-only runtime.
+# Upstream: ROOT
+# Downstream: sign-and-emit
+name: assurance-pipeline
+
+on:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  validate-inputs:
+    # CONSTRAINT TRADE-OFF
+    # GitHub Actions resolves job timeout-minutes before any repository file can be parsed,
+    # so the bootstrap job cannot source timeout from pipeline.config.json at job-definition
+    # evaluation time. A minimal static timeout is used only for bootstrap, then all
+    # downstream jobs source timeouts from the schema-bound configuration file.
+    timeout-minutes: 10
+    runs-on: ubuntu-22.04
+    outputs:
+      timeouts: ${{ steps.read-config.outputs.timeouts }}
+      output_scope: ${{ steps.read-config.outputs.output_scope }}
+      signing_key_mount: ${{ steps.read-config.outputs.signing_key_mount }}
+      pipeline_config_path: ${{ steps.read-config.outputs.pipeline_config_path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Validate schemas and pipeline config
+        id: read-config
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const configPath = path.join(process.cwd(), 'pipeline', 'pipeline.config.json');
+          const schemaPath = path.join(process.cwd(), 'orchestration', 'runner.schema.json');
+          const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+          const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+
+          if (schema.$schema !== 'https://json-schema.org/draft/2020-12/schema') {
+            throw new Error('runner.schema.json must use draft-2020-12');
+          }
+
+          const requiredTimeoutKeys = [
+            'build-containers',
+            'run-governance-policy',
+            'run-cross-framework-alignment',
+            'run-execution-orchestration',
+            'run-validation-analytics',
+            'sign-and-emit'
+          ];
+
+          for (const key of requiredTimeoutKeys) {
+            if (!Number.isInteger(config.pipeline.timeoutsMinutes[key])) {
+              throw new Error(`Missing integer timeout for ${key}`);
+            }
+          }
+
+          const output = fs.createWriteStream(process.env.GITHUB_OUTPUT, { flags: 'a' });
+          output.write(`timeouts=${JSON.stringify(config.pipeline.timeoutsMinutes)}\n`);
+          output.write(`output_scope=${config.pipeline.outputScopeVolume}\n`);
+          output.write(`signing_key_mount=${config.pipeline.signingKeyMountPath}\n`);
+          output.write(`pipeline_config_path=${configPath}\n`);
+          output.end();
+          NODE
+
+  build-containers:
+    needs: validate-inputs
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).build-containers }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Build deterministic Podman images
+        run: |
+          set -euo pipefail
+          podman build -f containers/governance-policy/Containerfile -t localhost/assurance/governance-policy:deterministic .
+          podman build -f containers/cross-framework-alignment/Containerfile -t localhost/assurance/cross-framework-alignment:deterministic .
+          podman build -f containers/execution-orchestration/Containerfile -t localhost/assurance/execution-orchestration:deterministic .
+          podman build -f containers/validation-analytics/Containerfile -t localhost/assurance/validation-analytics:deterministic .
+
+  run-governance-policy:
+    needs: build-containers
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).run-governance-policy }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Run governance policy container
+        run: |
+          set -euo pipefail
+          podman volume create assurance-evidence-store >/dev/null
+          podman run --rm --read-only --network=none --env-host=false \
+            --volume assurance-evidence-store:/evidence:rw \
+            --volume ./pipeline:/inputs:ro \
+            localhost/assurance/governance-policy:deterministic \
+            /app/entrypoint /inputs/pipeline.config.json /evidence/governance-policy.json
+
+  run-cross-framework-alignment:
+    needs: run-governance-policy
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).run-cross-framework-alignment }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Run cross framework alignment container
+        run: |
+          set -euo pipefail
+          podman run --rm --read-only --network=none --env-host=false \
+            --volume assurance-evidence-store:/evidence:rw \
+            --volume ./pipeline:/inputs:ro \
+            localhost/assurance/cross-framework-alignment:deterministic \
+            /app/entrypoint /inputs/pipeline.config.json /evidence/governance-policy.json /evidence/cross-framework-alignment.json
+
+  run-execution-orchestration:
+    needs: run-cross-framework-alignment
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).run-execution-orchestration }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Run execution orchestration container
+        run: |
+          set -euo pipefail
+          podman run --rm --read-only --network=none --env-host=false \
+            --volume assurance-evidence-store:/evidence:rw \
+            --volume ./pipeline:/inputs:ro \
+            localhost/assurance/execution-orchestration:deterministic \
+            /app/entrypoint /inputs/pipeline.config.json /evidence/cross-framework-alignment.json /evidence/execution-orchestration.json
+
+  run-validation-analytics:
+    needs: run-execution-orchestration
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).run-validation-analytics }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Run validation analytics container
+        run: |
+          set -euo pipefail
+          podman run --rm --read-only --network=none --env-host=false \
+            --volume assurance-evidence-store:/evidence:rw \
+            --volume ./pipeline:/inputs:ro \
+            localhost/assurance/validation-analytics:deterministic \
+            /app/entrypoint /inputs/pipeline.config.json /evidence/execution-orchestration.json /evidence/validation-analytics.json
+
+  sign-and-emit:
+    needs: run-validation-analytics
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).sign-and-emit }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Sign and emit evidence
+        run: |
+          set -euo pipefail
+          podman run --rm --read-only --network=none --env-host=false \
+            --volume assurance-evidence-store:/evidence:rw \
+            --volume ./pipeline:/inputs:ro \
+            --volume ./signing-key:/signing-key:ro \
+            localhost/assurance/validation-analytics:deterministic \
+            /app/sign-and-emit /inputs/pipeline.config.json /signing-key/ed25519.key /evidence/validation-analytics.json /evidence/signed-s-out.json

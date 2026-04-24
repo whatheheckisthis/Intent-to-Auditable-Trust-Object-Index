@@ -1,0 +1,76 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/s-in.schema.json",
+  "__role": "Draft-2020-12 schema for deterministic input state S_in.",
+  "__constraints_enforced": [
+    "typed-input-contract",
+    "fail-fast-required-fields",
+    "no-implicit-defaults"
+  ],
+  "__upstream": "ROOT",
+  "__downstream": "validate-inputs",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deterministic-assurance.local/schemas/s-in.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pipelineVersion",
+    "executionPlan",
+    "evidenceRequest"
+  ],
+  "properties": {
+    "pipelineVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "executionPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "inputArtifactPath",
+        "outputArtifactPath"
+      ],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": [
+            "validate-inputs",
+            "build-containers",
+            "run-governance-policy",
+            "run-cross-framework-alignment",
+            "run-execution-orchestration",
+            "run-validation-analytics",
+            "sign-and-emit"
+          ]
+        },
+        "inputArtifactPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outputArtifactPath": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "evidenceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetFrameworks"
+      ],
+      "properties": {
+        "targetFrameworks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

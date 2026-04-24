@@ -1,0 +1,44 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/attestation.schema.json",
+  "__role": "Attestation contract linking artefacts to commit and workflow identity.",
+  "__constraints_enforced": [
+    "typed-attestation-contract",
+    "required-provenance-fields",
+    "no-additional-properties"
+  ],
+  "__upstream": "sign-and-attest",
+  "__downstream": "emit-trace-matrix",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "git_commit_sha",
+    "workflow_run_id",
+    "signer_identity",
+    "rekor_log_index",
+    "artefact_digest"
+  ],
+  "properties": {
+    "git_commit_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "workflow_run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "signer_identity": {
+      "type": "string",
+      "format": "uri"
+    },
+    "rekor_log_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artefact_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

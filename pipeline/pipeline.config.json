@@ -17,11 +17,20 @@
       "run-cross-framework-alignment": 15,
       "run-execution-orchestration": 15,
       "run-validation-analytics": 15,
-      "sign-and-emit": 10
+      "generate-sbom": 15,
+      "evaluate-policies": 10,
+      "sign-and-attest": 10,
+      "emit-trace-matrix": 10
     },
     "outputScopeVolume": "assurance-evidence-store",
     "signingKeyMountPath": "/signing-key/ed25519.key",
     "inputSchemaPath": "schemas/s-in.schema.json",
-    "outputSchemaPath": "schemas/s-out.schema.json"
+    "outputSchemaPath": "schemas/s-out.schema.json",
+    "toolVersions": {
+      "conftest": "0.62.0",
+      "cosign": "v2.4.1",
+      "ajvCli": "5.0.0"
+    },
+    "evidenceRetentionDays": 2557
   }
 }

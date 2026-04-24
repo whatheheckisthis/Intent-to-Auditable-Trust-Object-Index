@@ -1,0 +1,33 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "pipeline/cosign.policy.json",
+  "__role": "Schema-bound verification policy for keyless Cosign attestations.",
+  "__constraints_enforced": [
+    "rekor-url-constant",
+    "oidc-issuer-constant",
+    "no-additional-properties"
+  ],
+  "__upstream": "sign-and-attest",
+  "__downstream": "emit-trace-matrix",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CosignVerificationPolicy",
+  "description": "Schema-bound verification policy for Cosign attestation checks.",
+  "type": "object",
+  "required": ["rekor_url", "certificate_identity_regexp", "certificate_oidc_issuer"],
+  "additionalProperties": false,
+  "properties": {
+    "rekor_url": {
+      "type": "string",
+      "format": "uri",
+      "const": "https://rekor.sigstore.dev"
+    },
+    "certificate_identity_regexp": {
+      "type": "string"
+    },
+    "certificate_oidc_issuer": {
+      "type": "string",
+      "format": "uri",
+      "const": "https://token.actions.githubusercontent.com"
+    }
+  }
+}

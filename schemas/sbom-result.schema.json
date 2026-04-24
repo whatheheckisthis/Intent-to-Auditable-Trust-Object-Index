@@ -1,0 +1,34 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/sbom-result.schema.json",
+  "__role": "Result contract for deterministic SBOM generation outcomes.",
+  "__constraints_enforced": [
+    "typed-output-contract",
+    "fail-fast-required-fields",
+    "no-additional-properties"
+  ],
+  "__upstream": "generate-sbom",
+  "__downstream": "evaluate-policies",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["output_path", "exit_code", "format", "spec_version"],
+  "properties": {
+    "output_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exit_code": {
+      "type": "integer",
+      "const": 0
+    },
+    "format": {
+      "type": "string",
+      "const": "cyclonedx-json"
+    },
+    "spec_version": {
+      "type": "string",
+      "const": "1.6"
+    }
+  }
+}

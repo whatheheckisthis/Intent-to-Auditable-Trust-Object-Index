@@ -1,0 +1,62 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "pipeline/mapping-matrix.json",
+  "__role": "Deterministic evidence-to-control mapping source for compliance reporting.",
+  "__constraints_enforced": [
+    "schema-bound-control-mapping",
+    "pipeline-stage-traceability",
+    "read-only-evidence-linkage"
+  ],
+  "__upstream": "sign-and-attest",
+  "__downstream": "emit-trace-matrix",
+  "$schema": "../schemas/mapping-matrix.schema.json",
+  "generated_at_parameter": "INJECTED_FROM_PIPELINE_CONFIG",
+  "framework_version": "ISM-2025-04 / E8-ML3-2025 / SOC2-2024",
+  "mappings": [
+    {
+      "control_id": "CTRL-AUD-01",
+      "control_description": "Cryptographic non-repudiation of all assurance outputs",
+      "framework_refs": ["ISM-0149", "E8-ML3-APP-6", "SOC2-CC7.2"],
+      "evidence_artefact": "schemas/s-out.schema.json",
+      "pipeline_stage": "sign-and-attest",
+      "attestation_type": "cosign-keyless",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-SUPPLY-01",
+      "control_description": "Software supply chain integrity via pinned digests and SBOM",
+      "framework_refs": ["ISM-1753", "E8-ML3-PATCH-1", "SOC2-CC8.1"],
+      "evidence_artefact": "pipeline/outputs/sbom-cyclonedx.json",
+      "pipeline_stage": "generate-sbom",
+      "attestation_type": "cyclonedx-1.6",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-INFRA-01",
+      "control_description": "Immutable, rootless, network-isolated container execution",
+      "framework_refs": ["ISM-1491", "E8-ML3-APP-2", "SOC2-CC6.6"],
+      "evidence_artefact": "containers/governance-policy/Containerfile",
+      "pipeline_stage": "evaluate-policies",
+      "attestation_type": "conftest-opa",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-INPUT-01",
+      "control_description": "Schema-bound, fail-fast input validation at all container boundaries",
+      "framework_refs": ["ISM-0407", "E8-ML3-APP-3", "SOC2-CC6.1"],
+      "evidence_artefact": "schemas/s-in.schema.json",
+      "pipeline_stage": "validate-inputs",
+      "attestation_type": "jsonschema-2020-12",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-PROV-01",
+      "control_description": "Verifiable build provenance linked to Git commit and workflow identity",
+      "framework_refs": ["ISM-1858", "E8-ML3-APP-6", "SOC2-CC7.1"],
+      "evidence_artefact": "schemas/attestation.schema.json",
+      "pipeline_stage": "sign-and-attest",
+      "attestation_type": "slsa-provenance-v1",
+      "coverage_status": "COVERED"
+    }
+  ]
+}

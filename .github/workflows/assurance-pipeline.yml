@@ -1,8 +1,8 @@
 # File: .github/workflows/assurance-pipeline.yml
-# Role: Deterministic GitHub Actions DAG for assurance pipeline execution.
+# Role: Deterministic GitHub Actions DAG for assurance pipeline execution with audit-ready extensions.
 # Constraints enforced: DAG-only job graph, pinned action SHAs, fail-fast execution, no workflow/job env blocks, schema-bound timeout propagation, Podman-only runtime.
 # Upstream: ROOT
-# Downstream: sign-and-emit
+# Downstream: emit-trace-matrix
 name: assurance-pipeline
 
 on:
@@ -13,10 +13,9 @@ permissions: read-all
 jobs:
   validate-inputs:
     # CONSTRAINT TRADE-OFF
-    # GitHub Actions resolves job timeout-minutes before any repository file can be parsed,
-    # so the bootstrap job cannot source timeout from pipeline.config.json at job-definition
-    # evaluation time. A minimal static timeout is used only for bootstrap, then all
-    # downstream jobs source timeouts from the schema-bound configuration file.
+    # GitHub Actions resolves job timeout-minutes before repository files can be parsed.
+    # A minimal static timeout is used only for bootstrap; downstream jobs then source
+    # timeout and version constants from pipeline/pipeline.config.json.
     timeout-minutes: 10
     runs-on: ubuntu-22.04
     outputs:
@@ -24,6 +23,10 @@ jobs:
       output_scope: ${{ steps.read-config.outputs.output_scope }}
       signing_key_mount: ${{ steps.read-config.outputs.signing_key_mount }}
       pipeline_config_path: ${{ steps.read-config.outputs.pipeline_config_path }}
+      conftest_version: ${{ steps.read-config.outputs.conftest_version }}
+      cosign_version: ${{ steps.read-config.outputs.cosign_version }}
+      ajv_cli_version: ${{ steps.read-config.outputs.ajv_cli_version }}
+      retention_days: ${{ steps.read-config.outputs.retention_days }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -50,7 +53,10 @@ jobs:
             'run-cross-framework-alignment',
             'run-execution-orchestration',
             'run-validation-analytics',
-            'sign-and-emit'
+            'generate-sbom',
+            'evaluate-policies',
+            'sign-and-attest',
+            'emit-trace-matrix'
           ];
 
           for (const key of requiredTimeoutKeys) {
@@ -59,16 +65,31 @@ jobs:
             }
           }
 
+          const requiredVersionKeys = ['conftest', 'cosign', 'ajvCli'];
+          for (const key of requiredVersionKeys) {
+            if (typeof config.pipeline.toolVersions[key] !== 'string' || config.pipeline.toolVersions[key].length === 0) {
+              throw new Error(`Missing tool version for ${key}`);
+            }
+          }
+
+          if (!Number.isInteger(config.pipeline.evidenceRetentionDays) || config.pipeline.evidenceRetentionDays < 1) {
+            throw new Error('pipeline.evidenceRetentionDays must be a positive integer');
+          }
+
           const output = fs.createWriteStream(process.env.GITHUB_OUTPUT, { flags: 'a' });
           output.write(`timeouts=${JSON.stringify(config.pipeline.timeoutsMinutes)}\n`);
           output.write(`output_scope=${config.pipeline.outputScopeVolume}\n`);
           output.write(`signing_key_mount=${config.pipeline.signingKeyMountPath}\n`);
           output.write(`pipeline_config_path=${configPath}\n`);
+          output.write(`conftest_version=${config.pipeline.toolVersions.conftest}\n`);
+          output.write(`cosign_version=${config.pipeline.toolVersions.cosign}\n`);
+          output.write(`ajv_cli_version=${config.pipeline.toolVersions.ajvCli}\n`);
+          output.write(`retention_days=${config.pipeline.evidenceRetentionDays}\n`);
           output.end();
           NODE
 
   build-containers:
-    needs: validate-inputs
+    needs: [validate-inputs]
     timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).build-containers }}
     runs-on: ubuntu-22.04
     steps:
@@ -81,9 +102,10 @@ jobs:
           podman build -f containers/cross-framework-alignment/Containerfile -t localhost/assurance/cross-framework-alignment:deterministic .
           podman build -f containers/execution-orchestration/Containerfile -t localhost/assurance/execution-orchestration:deterministic .
           podman build -f containers/validation-analytics/Containerfile -t localhost/assurance/validation-analytics:deterministic .
+          podman build -f containers/sbom-generator/Containerfile -t localhost/assurance/sbom-generator:deterministic .
 
   run-governance-policy:
-    needs: build-containers
+    needs: [build-containers, validate-inputs]
     timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).run-governance-policy }}
     runs-on: ubuntu-22.04
     steps:
@@ -98,7 +120,7 @@ jobs:
             /app/entrypoint /inputs/pipeline.config.json /evidence/governance-policy.json
 
   run-cross-framework-alignment:
-    needs: run-governance-policy
+    needs: [run-governance-policy, validate-inputs]
     timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).run-cross-framework-alignment }}
     runs-on: ubuntu-22.04
     steps:
@@ -112,7 +134,7 @@ jobs:
             /app/entrypoint /inputs/pipeline.config.json /evidence/governance-policy.json /evidence/cross-framework-alignment.json
 
   run-execution-orchestration:
-    needs: run-cross-framework-alignment
+    needs: [run-cross-framework-alignment, validate-inputs]
     timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).run-execution-orchestration }}
     runs-on: ubuntu-22.04
     steps:
@@ -126,7 +148,7 @@ jobs:
             /app/entrypoint /inputs/pipeline.config.json /evidence/cross-framework-alignment.json /evidence/execution-orchestration.json
 
   run-validation-analytics:
-    needs: run-execution-orchestration
+    needs: [run-execution-orchestration, validate-inputs]
     timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).run-validation-analytics }}
     runs-on: ubuntu-22.04
     steps:
@@ -139,19 +161,106 @@ jobs:
             localhost/assurance/validation-analytics:deterministic \
             /app/entrypoint /inputs/pipeline.config.json /evidence/execution-orchestration.json /evidence/validation-analytics.json
 
-  sign-and-emit:
-    needs: run-validation-analytics
-    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).sign-and-emit }}
+  generate-sbom:
+    needs: [run-validation-analytics, validate-inputs]
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).generate-sbom }}
     runs-on: ubuntu-22.04
     permissions:
-      contents: write
+      contents: read
     steps:
-      - name: Sign and emit evidence
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Run generate-sbom target
         run: |
           set -euo pipefail
-          podman run --rm --read-only --network=none --env-host=false \
-            --volume assurance-evidence-store:/evidence:rw \
-            --volume ./pipeline:/inputs:ro \
-            --volume ./signing-key:/signing-key:ro \
-            localhost/assurance/validation-analytics:deterministic \
-            /app/sign-and-emit /inputs/pipeline.config.json /signing-key/ed25519.key /evidence/validation-analytics.json /evidence/signed-s-out.json
+          make generate-sbom
+
+  evaluate-policies:
+    needs: [generate-sbom, validate-inputs]
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).evaluate-policies }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Install Conftest
+        run: |
+          set -euo pipefail
+          CONFTEST_VERSION='${{ needs.validate-inputs.outputs.conftest_version }}'
+          curl -Lo conftest.tar.gz \
+            "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz"
+          tar -xf conftest.tar.gz conftest
+          install -m 0755 conftest /usr/local/bin/conftest
+      - name: Validate Podman runtime config schemas
+        run: |
+          set -euo pipefail
+          AJV_CLI_VERSION='${{ needs.validate-inputs.outputs.ajv_cli_version }}'
+          npx --yes "ajv-cli@${AJV_CLI_VERSION}" validate \
+            -s policies/podman-runtime.schema.json \
+            -d 'pipeline/outputs/podman-run-configs/*.json'
+      - name: Evaluate Podman runtime policies
+        run: |
+          set -euo pipefail
+          conftest test \
+            --policy policies/ \
+            --namespace podman.runtime \
+            pipeline/outputs/podman-run-configs/*.json
+
+  sign-and-attest:
+    needs: [evaluate-policies, validate-inputs]
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).sign-and-attest }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      packages: write
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@9f6d14fae03479f25e710c5a96df8270f8f9f3d0
+        with:
+          cosign-release: '${{ needs.validate-inputs.outputs.cosign_version }}'
+
+      - name: Load evidence artefact digest
+        id: load-digest
+        run: |
+          set -euo pipefail
+          DIGEST=$(jq -r '.artefact_digest' < pipeline/outputs/s-out-manifest.json)
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Sign artefact with keyless OIDC identity
+        # CONSTRAINT TRADE-OFF
+        # Cosign keyless signing requires a GitHub OIDC token minted by the platform.
+        # The token exchange happens inside cosign after F completes; this step attests
+        # to S_out and does not alter deterministic execution function F.
+        run: |
+          set -euo pipefail
+          cosign sign \
+            --yes \
+            --rekor-url=https://rekor.sigstore.dev \
+            "$(jq -r '.registry_ref' < pipeline/outputs/s-out-manifest.json)@${{ steps.load-digest.outputs.digest }}"
+
+  emit-trace-matrix:
+    needs: [sign-and-attest, validate-inputs]
+    timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).emit-trace-matrix }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Validate mapping matrix schema
+        run: |
+          set -euo pipefail
+          AJV_CLI_VERSION='${{ needs.validate-inputs.outputs.ajv_cli_version }}'
+          npx --yes "ajv-cli@${AJV_CLI_VERSION}" validate \
+            -s schemas/mapping-matrix.schema.json \
+            -d pipeline/mapping-matrix.json
+      - name: Generate coverage table
+        run: |
+          set -euo pipefail
+          node pipeline/generate-coverage-table.js
+      - name: Upload coverage table to evidence store
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: control-coverage-table
+          path: pipeline/outputs/coverage-table.md
+          retention-days: ${{ needs.validate-inputs.outputs.retention_days }}

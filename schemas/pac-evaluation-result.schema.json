@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "../schemas/pac-evaluation-result.schema.json",
+  "$comment": "File: schemas/pac-evaluation-result.schema.json | Role: Draft-2020-12 schema for structured PaC evaluation result artefact. | Constraints enforced: required result contract, coverage const values, no additional properties. | Upstream: policies/pac-evaluator.js | Downstream: emit-trace-matrix | ISM controls: ISM-0149, ISM-1491, ISM-0407.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "policy_id",
+    "policy_version",
+    "pipeline_run_ref",
+    "opa_exit_code",
+    "opa_result",
+    "azure_policy_status",
+    "azure_policy_gap",
+    "aws_iam_status",
+    "aws_iam_gap",
+    "framework_mappings",
+    "overall_status"
+  ],
+  "properties": {
+    "policy_id": { "type": "string", "minLength": 1 },
+    "policy_version": { "type": "string", "minLength": 1 },
+    "pipeline_run_ref": { "type": "string", "minLength": 1 },
+    "opa_exit_code": { "type": "integer" },
+    "opa_result": { "type": "array" },
+    "azure_policy_status": { "const": "COVERAGE_STRUCTURAL_ONLY" },
+    "azure_policy_gap": { "type": "string", "minLength": 1 },
+    "aws_iam_status": { "const": "COVERAGE_STRUCTURAL_ONLY" },
+    "aws_iam_gap": { "type": "string", "minLength": 1 },
+    "framework_mappings": { "type": "array" },
+    "overall_status": {
+      "type": "string",
+      "enum": ["POLICY_PASS", "POLICY_FAIL"]
+    }
+  }
+}

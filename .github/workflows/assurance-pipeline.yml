@@ -209,6 +209,32 @@ jobs:
             --policy policies/ \
             --namespace podman.runtime \
             pipeline/outputs/podman-run-configs/*.json
+      - name: Validate pac-policy.json schema
+        run: |
+          set -euo pipefail
+          AJV_CLI_VERSION='${{ needs.validate-inputs.outputs.ajv_cli_version }}'
+          npx --yes "ajv-cli@${AJV_CLI_VERSION}" validate \
+            -s schemas/pac-policy.schema.json \
+            -d policies/pac-policy.json
+      - name: Run PaC evaluator bridge
+        run: |
+          set -euo pipefail
+          node policies/pac-evaluator.js \
+            --input pipeline/pac-evaluator-input.json
+      - name: Assert policy pass
+        run: |
+          set -euo pipefail
+          STATUS=$(jq -r '.overall_status' pipeline/outputs/pac-evaluation-result.json)
+          if [ "$STATUS" != "POLICY_PASS" ]; then
+            echo "POLICY_FAIL: pac-evaluator reported violations"
+            exit 1
+          fi
+      - name: Upload PaC evaluation result
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
+        with:
+          name: pac-evaluation-result
+          path: pipeline/outputs/pac-evaluation-result.json
+          retention-days: 2557
 
   sign-and-attest:
     needs: [evaluate-policies, validate-inputs]

@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "../schemas/pac-policy.schema.json",
+  "$comment": "File: schemas/pac-policy.schema.json | Role: Draft-2020-12 schema contract for canonical policy-as-code object validation. | Constraints enforced: strict object shapes, no additional properties, fixed coverage status for structural targets. | Upstream: ROOT | Downstream: evaluate-policies | ISM controls: ISM-0149, ISM-1491, ISM-0407.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metadata",
+    "rules",
+    "parameters",
+    "targets",
+    "framework_mappings"
+  ],
+  "properties": {
+    "# CONSTRAINT TRADE-OFF": { "type": "string" },
+    "__file": { "type": "string" },
+    "__role": { "type": "string" },
+    "__constraints_enforced": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "__upstream": { "type": "string" },
+    "__downstream": { "type": "string" },
+    "# CONSTRAINT TRADE-OFF.rule_id_pattern": { "type": "string" },
+    "# CONSTRAINT TRADE-OFF.targets.azure_policy": { "type": "string" },
+    "# CONSTRAINT TRADE-OFF.targets.aws_iam": { "type": "string" },
+    "$schema": { "type": "string", "const": "../schemas/pac-policy.schema.json" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "policy_version",
+        "description",
+        "ism_controls",
+        "framework_version",
+        "effect_default"
+      ],
+      "properties": {
+        "policy_id": { "type": "string", "minLength": 1 },
+        "policy_version": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "ism_controls": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "framework_version": { "type": "string", "minLength": 1 },
+        "effect_default": {
+          "type": "string",
+          "enum": ["Deny", "Audit", "Disabled"]
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rule_id",
+          "description",
+          "effect",
+          "condition",
+          "remediation",
+          "ism_controls"
+        ],
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "pattern": "^RULE-[A-Z0-9]{4,5}$"
+          },
+          "description": { "type": "string", "minLength": 1 },
+          "effect": {
+            "type": "string",
+            "enum": ["Deny", "Audit", "Disabled"],
+            "default": "Deny"
+          },
+          "condition": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "operator", "value"],
+            "properties": {
+              "field": { "type": "string", "minLength": 1 },
+              "operator": {
+                "type": "string",
+                "enum": ["equals", "not_equals", "matches_pattern", "in", "not_in"]
+              },
+              "value": {}
+            }
+          },
+          "remediation": { "type": "string", "minLength": 1 },
+          "ism_controls": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "default_value", "description", "ism_control_rationale"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["string", "boolean", "integer", "array"]
+          },
+          "default_value": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "boolean" },
+              { "type": "integer" },
+              { "type": "array" }
+            ]
+          },
+          "description": { "type": "string", "minLength": 1 },
+          "ism_control_rationale": { "type": "string", "minLength": 1 }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "string" } } },
+            "then": { "properties": { "default_value": { "type": "string" } } }
+          },
+          {
+            "if": { "properties": { "type": { "const": "boolean" } } },
+            "then": { "properties": { "default_value": { "type": "boolean" } } }
+          },
+          {
+            "if": { "properties": { "type": { "const": "integer" } } },
+            "then": { "properties": { "default_value": { "type": "integer" } } }
+          },
+          {
+            "if": { "properties": { "type": { "const": "array" } } },
+            "then": { "properties": { "default_value": { "type": "array" } } }
+          }
+        ]
+      }
+    },
+    "targets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opa", "azure_policy", "aws_iam"],
+      "properties": {
+        "opa": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["input_schema_ref", "policy_file_ref", "namespace", "conditions"],
+          "properties": {
+            "input_schema_ref": { "type": "string", "minLength": 1 },
+            "policy_file_ref": { "type": "string", "minLength": 1 },
+            "namespace": { "type": "string", "minLength": 1 },
+            "conditions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rule_id", "field", "operator", "value"],
+                "properties": {
+                  "rule_id": {
+                    "type": "string",
+                    "pattern": "^RULE-[A-Z0-9]{4,5}$"
+                  },
+                  "field": { "type": "string", "minLength": 1 },
+                  "operator": {
+                    "type": "string",
+                    "enum": ["equals", "not_equals", "matches_pattern", "in", "not_in"]
+                  },
+                  "value": {}
+                }
+              }
+            }
+          }
+        },
+        "azure_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["shape_version", "coverage_status", "gap_note", "policyRule", "parameters"],
+          "properties": {
+            "shape_version": { "type": "string", "minLength": 1 },
+            "coverage_status": { "const": "COVERAGE_STRUCTURAL_ONLY" },
+            "gap_note": { "type": "string", "minLength": 1 },
+            "policyRule": { "type": "object" },
+            "parameters": { "type": "object" }
+          }
+        },
+        "aws_iam": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["shape_version", "coverage_status", "gap_note", "Statement"],
+          "properties": {
+            "shape_version": { "type": "string", "minLength": 1 },
+            "coverage_status": { "const": "COVERAGE_STRUCTURAL_ONLY" },
+            "gap_note": { "type": "string", "minLength": 1 },
+            "Statement": { "type": "array", "minItems": 1 }
+          }
+        }
+      }
+    },
+    "framework_mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule_id", "framework_refs", "control_id"],
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "pattern": "^RULE-[A-Z0-9]{4,5}$"
+          },
+          "framework_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "control_id": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -4,6 +4,7 @@
 # Upstream: ROOT
 # Downstream: emit-trace-matrix
 .PHONY: all validate-inputs build-containers run-governance-policy run-cross-framework-alignment run-execution-orchestration run-validation-analytics generate-sbom evaluate-policies sign-and-attest emit-trace-matrix run-determinism-harness run-mutation-suite package-evidence-bundle register-webhooks embed-canaries generate-runbook
+AJV_VERSION ?= 5.0.0
 
 all: generate-runbook
 
@@ -46,6 +47,15 @@ evaluate-policies: generate-sbom
 	  --policy policies/ \
 	  --namespace podman.runtime \
 	  pipeline/outputs/podman-run-configs/*.json
+	npx --yes ajv-cli@$(AJV_VERSION) validate \
+	  -s schemas/pac-policy.schema.json \
+	  -d policies/pac-policy.json
+	node policies/pac-evaluator.js \
+	  --input pipeline/pac-evaluator-input.json
+	@STATUS=$$(jq -r '.overall_status' \
+	  pipeline/outputs/pac-evaluation-result.json); \
+	  [ "$$STATUS" = "POLICY_PASS" ] || \
+	  (echo "POLICY_FAIL: pac-evaluator reported violations" && exit 1)
 
 sign-and-attest: evaluate-policies
 	# CONSTRAINT TRADE-OFF: Keyless signing depends on CI OIDC identity and is not executed in local offline mode.

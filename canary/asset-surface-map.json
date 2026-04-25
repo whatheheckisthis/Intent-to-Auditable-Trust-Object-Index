@@ -1,0 +1,91 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "canary/asset-surface-map.json",
+  "__role": "Asset surface classification for strategic multi-type Thinkst/TraceBit token deployment.",
+  "__constraints_enforced": [
+    "flock-organised-deception-layer",
+    "risk-tier-aligned-token-types",
+    "alert-channel-routing"
+  ],
+  "__upstream": "ROOT",
+  "__downstream": "embed-canaries",
+  "__ism_controls": ["ISM-0109", "ISM-0140", "ISM-0585", "ISM-1554"],
+  "$schema": "../schemas/asset-surface-map.schema.json",
+  "surface_version": "1.0.0",
+  "flocks": [
+    {
+      "flock_id": "FLOCK-CICD",
+      "description": "CI/CD pipeline infrastructure — GitHub Actions, Makefile, runners",
+      "risk_tier": "CRITICAL",
+      "permitted_token_types": ["aws_api_key", "github_pat", "url", "dns"],
+      "alert_channel_primary": "slack_webhook",
+      "alert_channel_secondary": ["siem", "ticketing"],
+      "alert_severity": "CRITICAL"
+    },
+    {
+      "flock_id": "FLOCK-REPO-PRIVATE",
+      "description": "Private GitHub/GitLab repositories — config files, branch .env",
+      "risk_tier": "HIGH",
+      "permitted_token_types": ["aws_api_key", "azure_id", "slack_token", "pdf", "url", "dns"],
+      "alert_channel_primary": "slack_webhook",
+      "alert_channel_secondary": ["siem"],
+      "alert_severity": "HIGH"
+    },
+    {
+      "flock_id": "FLOCK-REPO-PUBLIC",
+      "description": "Public GitHub/GitLab repositories — URL and DNS only to avoid fatigue",
+      "risk_tier": "MEDIUM",
+      "permitted_token_types": ["url", "dns"],
+      "alert_channel_primary": "slack_webhook",
+      "alert_channel_secondary": ["siem"],
+      "alert_severity": "MEDIUM",
+      "fatigue_note": "Restrict to URL/DNS types only. AWS key tokens in public repos trigger automated scanners and cause false-positive alert fatigue."
+    },
+    {
+      "flock_id": "FLOCK-CLOUD",
+      "description": "AWS, Azure, GCP accounts — IAM policies, metadata documents, consoles",
+      "risk_tier": "CRITICAL",
+      "permitted_token_types": ["aws_api_key", "azure_id", "gcp_service_account", "url", "dns"],
+      "alert_channel_primary": "grafana_irm",
+      "alert_channel_secondary": ["slack_webhook", "siem", "ticketing"],
+      "alert_severity": "CRITICAL"
+    },
+    {
+      "flock_id": "FLOCK-CONTAINERS",
+      "description": "Podman containers, Containerfiles, image layers, volumes",
+      "risk_tier": "HIGH",
+      "permitted_token_types": ["aws_api_key", "url", "dns"],
+      "alert_channel_primary": "slack_webhook",
+      "alert_channel_secondary": ["siem"],
+      "alert_severity": "HIGH"
+    },
+    {
+      "flock_id": "FLOCK-DOCS",
+      "description": "Shared network drives, Google Drive, documentation portals, PDFs",
+      "risk_tier": "MEDIUM",
+      "permitted_token_types": ["pdf", "url", "google_doc", "email", "dns"],
+      "alert_channel_primary": "slack_webhook",
+      "alert_channel_secondary": ["siem"],
+      "alert_severity": "MEDIUM"
+    },
+    {
+      "flock_id": "FLOCK-WORKSTATION",
+      "description": "Developer workstations, build servers, ~/.aws/credentials, registries",
+      "risk_tier": "HIGH",
+      "permitted_token_types": ["aws_api_key", "windows_registry", "cmd", "url", "dns"],
+      "alert_channel_primary": "grafana_irm",
+      "alert_channel_secondary": ["slack_webhook", "siem"],
+      "alert_severity": "HIGH"
+    },
+    {
+      "flock_id": "FLOCK-SECRETS",
+      "description": "Vaults, GitHub Secrets (org-level and repo-level), secret managers",
+      "risk_tier": "CRITICAL",
+      "permitted_token_types": ["aws_api_key", "github_pat", "azure_id"],
+      "alert_channel_primary": "grafana_irm",
+      "alert_channel_secondary": ["slack_webhook", "siem", "ticketing"],
+      "alert_severity": "CRITICAL",
+      "deployment_note": "Deploy at GitHub organisation level to flag any repo breach, AND per-repository to pinpoint intrusion source."
+    }
+  ]
+}

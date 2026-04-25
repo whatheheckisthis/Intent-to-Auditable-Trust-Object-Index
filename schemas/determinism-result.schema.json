@@ -1,0 +1,48 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/determinism-result.schema.json",
+  "__role": "Schema for deterministic harness outcome record.",
+  "__constraints_enforced": [
+    "typed-determinism-outcome",
+    "hash-format-validation",
+    "no-additional-properties"
+  ],
+  "__upstream": "run-determinism-harness",
+  "__downstream": "package-evidence-bundle",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "run_a_digest",
+    "run_b_digest",
+    "digests_match",
+    "pipeline_image_digest",
+    "input_fixture_path"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["DETERMINISM_PASS", "DETERMINISM_FAILURE"]
+    },
+    "run_a_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "run_b_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "digests_match": {
+      "type": "boolean"
+    },
+    "pipeline_image_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "input_fixture_path": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "pipelineVersion": "1.0.0",
+  "executionPlan": {
+    "stage": "validate-inputs",
+    "inputArtifactPath": "pipeline/inputs/s-in.json",
+    "outputArtifactPath": "pipeline/outputs/s-out.json"
+  },
+  "evidenceRequest": {
+    "targetFrameworks": ["ISM-0407"]
+  },
+  "unrecognisedProperty": true
+}

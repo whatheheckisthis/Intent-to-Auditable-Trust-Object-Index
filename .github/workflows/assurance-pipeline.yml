@@ -56,7 +56,11 @@ jobs:
             'generate-sbom',
             'evaluate-policies',
             'sign-and-attest',
-            'emit-trace-matrix'
+            'emit-trace-matrix',
+            'run-determinism-harness',
+            'run-mutation-suite',
+            'package-evidence-bundle',
+            'generate-runbook'
           ];
 
           for (const key of requiredTimeoutKeys) {
@@ -264,3 +268,124 @@ jobs:
           name: control-coverage-table
           path: pipeline/outputs/coverage-table.md
           retention-days: ${{ needs.validate-inputs.outputs.retention_days }}
+
+
+  run-determinism-harness:
+    needs: [emit-trace-matrix]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Run determinism harness via Podman
+        run: |
+          set -euo pipefail
+          mkdir -p pipeline/outputs/harness
+          podman run \
+            --read-only \
+            --network=none \
+            --env-host=false \
+            --rm \
+            --volume "$(pwd)/test/fixtures:/input:ro" \
+            --volume "$(pwd)/pipeline/outputs/harness:/output:rw" \
+            determinism-harness@sha256:$(jq -r '.pipeline.determinismHarnessDigest' pipeline/pipeline.config.json)
+
+      - name: Assert determinism pass
+        run: |
+          set -euo pipefail
+          STATUS=$(jq -r '.status' pipeline/outputs/harness/determinism-result.json)
+          if [ "$STATUS" != "DETERMINISM_PASS" ]; then
+            echo "DETERMINISM_FAILURE: pipeline produced non-identical outputs for identical inputs"
+            exit 1
+          fi
+
+  run-mutation-suite:
+    needs: [run-determinism-harness]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Run mutation suite via Podman
+        run: |
+          set -euo pipefail
+          mkdir -p pipeline/outputs/mutations
+          podman run \
+            --read-only \
+            --network=none \
+            --env-host=false \
+            --rm \
+            --volume "$(pwd):/workspace:ro" \
+            --volume "$(pwd)/pipeline/outputs/mutations:/output:rw" \
+            mutation-runner@sha256:$(jq -r '.pipeline.mutationRunnerDigest' pipeline/pipeline.config.json)
+
+      - name: Assert zero mutation escapes
+        run: |
+          set -euo pipefail
+          ESCAPED=$(jq '.escaped' pipeline/outputs/mutations/mutation-report.json)
+          if [ "$ESCAPED" -ne 0 ]; then
+            echo "MUTATION_ESCAPE: $ESCAPED schema validation gaps detected"
+            exit 1
+          fi
+
+  package-evidence-bundle:
+    needs: [run-mutation-suite]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Download all pipeline artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: pipeline/outputs/
+
+      - name: Package evidence bundle
+        run: node pipeline/package-evidence-bundle.js
+
+      - name: Sign bundle manifest with Cosign
+        # CONSTRAINT TRADE-OFF: same OIDC carve-out as iteration 2 sign-and-attest job.
+        # Cosign keyless signing occurs post-F, attesting to S_out, not participating in F.
+        run: |
+          set -euo pipefail
+          cosign sign-blob \
+            --yes \
+            --rekor-url=https://rekor.sigstore.dev \
+            --output-signature=pipeline/outputs/evidence-bundle/bundle-manifest.sig \
+            pipeline/outputs/evidence-bundle/bundle-manifest.json
+
+      - name: Upload evidence bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: regulatory-evidence-bundle
+          path: pipeline/outputs/evidence-bundle/
+          retention-days: 2557
+
+  generate-runbook:
+    needs: [package-evidence-bundle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Download evidence bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: regulatory-evidence-bundle
+          path: pipeline/outputs/evidence-bundle/
+
+      - name: Generate runbook
+        run: node pipeline/generate-runbook.js
+
+      - name: Upload runbook to evidence store
+        uses: actions/upload-artifact@v4
+        with:
+          name: operator-runbook
+          path: pipeline/outputs/runbook/
+          retention-days: 2557

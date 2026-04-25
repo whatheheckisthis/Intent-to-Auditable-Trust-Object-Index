@@ -3,9 +3,9 @@
 # Constraints enforced: explicit DAG prerequisites, Podman-only commands, --read-only, --network=none, --env-host=false on all runs.
 # Upstream: ROOT
 # Downstream: emit-trace-matrix
-.PHONY: all validate-inputs build-containers run-governance-policy run-cross-framework-alignment run-execution-orchestration run-validation-analytics generate-sbom evaluate-policies sign-and-attest emit-trace-matrix
+.PHONY: all validate-inputs build-containers run-governance-policy run-cross-framework-alignment run-execution-orchestration run-validation-analytics generate-sbom evaluate-policies sign-and-attest emit-trace-matrix run-determinism-harness run-mutation-suite package-evidence-bundle generate-runbook
 
-all: emit-trace-matrix
+all: generate-runbook
 
 validate-inputs:
 	node -e "const fs=require('node:fs'); const cfg=JSON.parse(fs.readFileSync('pipeline/pipeline.config.json','utf8')); if (!cfg.pipeline || !cfg.pipeline.timeoutsMinutes) { process.exit(1); }"
@@ -53,3 +53,36 @@ sign-and-attest: evaluate-policies
 
 emit-trace-matrix: sign-and-attest
 	node pipeline/generate-coverage-table.js
+
+
+run-determinism-harness: emit-trace-matrix
+	podman run \
+	  --read-only \
+	  --network=none \
+	  --env-host=false \
+	  --rm \
+	  --volume "$(FIXTURE_PATH):/input:ro" \
+	  --volume "$(HARNESS_OUTPUT_PATH):/output:rw" \
+	  determinism-harness@sha256:$(HARNESS_IMAGE_DIGEST)
+	@STATUS=$$(jq -r '.status' $(HARNESS_OUTPUT_PATH)/determinism-result.json); \
+	  [ "$$STATUS" = "DETERMINISM_PASS" ] || (echo "DETERMINISM_FAILURE" && exit 1)
+
+run-mutation-suite: run-determinism-harness
+	podman run \
+	  --read-only \
+	  --network=none \
+	  --env-host=false \
+	  --rm \
+	  --volume "$(PWD):/workspace:ro" \
+	  --volume "$(MUTATION_OUTPUT_PATH):/output:rw" \
+	  mutation-runner@sha256:$(MUTATION_IMAGE_DIGEST)
+	@ESCAPED=$$(jq -r '.escaped' $(MUTATION_OUTPUT_PATH)/mutation-report.json); \
+	  [ "$$ESCAPED" = "0" ] || (echo "MUTATION_ESCAPE" && exit 1)
+
+package-evidence-bundle: run-mutation-suite
+	node pipeline/package-evidence-bundle.js
+
+
+generate-runbook: package-evidence-bundle
+	node pipeline/generate-runbook.js
+	@echo "Runbook written to pipeline/outputs/runbook/"

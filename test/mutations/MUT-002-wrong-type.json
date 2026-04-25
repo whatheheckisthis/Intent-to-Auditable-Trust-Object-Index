@@ -1,0 +1,7 @@
+{
+  "pipelineVersion": "1.0.0",
+  "executionPlan": "should-be-object",
+  "evidenceRequest": {
+    "targetFrameworks": ["ISM-0407"]
+  }
+}

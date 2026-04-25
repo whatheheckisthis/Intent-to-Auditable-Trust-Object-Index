@@ -1,0 +1,47 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/mutation-report.schema.json",
+  "__role": "Schema contract for mutation suite outcome report.",
+  "__constraints_enforced": [
+    "typed-mutation-outcomes",
+    "escape-rate-accounting",
+    "no-additional-properties"
+  ],
+  "__upstream": "run-mutation-suite",
+  "__downstream": "package-evidence-bundle",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "total_mutations",
+    "caught",
+    "escaped",
+    "escape_rate",
+    "results"
+  ],
+  "properties": {
+    "total_mutations": { "type": "integer", "minimum": 0 },
+    "caught": { "type": "integer", "minimum": 0 },
+    "escaped": { "type": "integer", "minimum": 0 },
+    "escape_rate": { "type": "number", "minimum": 0 },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mutation_id",
+          "status",
+          "expected_error_keyword",
+          "actual_error_keyword"
+        ],
+        "properties": {
+          "mutation_id": { "type": "string", "pattern": "^MUT-[0-9]{3}$" },
+          "status": { "type": "string", "enum": ["CAUGHT", "ESCAPED"] },
+          "expected_error_keyword": { "type": "string", "minLength": 1 },
+          "actual_error_keyword": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

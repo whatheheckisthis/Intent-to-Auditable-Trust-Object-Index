@@ -1,0 +1,58 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/runbook.schema.json",
+  "__role": "Schema for generated operator runbook output derived from pipeline DAG config.",
+  "__constraints_enforced": [
+    "typed-runbook-shape",
+    "dag-derived-stage-entries",
+    "no-additional-properties"
+  ],
+  "__upstream": "package-evidence-bundle",
+  "__downstream": "generate-runbook",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["generated_from_config", "dag_stage_count", "stages"],
+  "properties": {
+    "generated_from_config": { "type": "string", "minLength": 1 },
+    "dag_stage_count": { "type": "integer", "minimum": 1 },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stage_id",
+          "description",
+          "depends_on",
+          "input_schema_ref",
+          "validation_command",
+          "failure_mode",
+          "recovery_procedure",
+          "framework_controls"
+        ],
+        "properties": {
+          "stage_id": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "input_schema_ref": { "type": "string", "minLength": 1 },
+          "validation_command": { "type": "string", "minLength": 1 },
+          "failure_mode": {
+            "type": "string",
+            "enum": ["HALT_PIPELINE", "EMIT_FAILURE_RECORD_AND_HALT"]
+          },
+          "recovery_procedure": { "type": "string", "minLength": 1 },
+          "framework_controls": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "minItems": 1
+          }
+        }
+      }
+    }
+  }
+}

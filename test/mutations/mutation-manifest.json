@@ -1,0 +1,55 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "test/mutations/mutation-manifest.json",
+  "__role": "Mutation rule manifest for fail-fast schema validator assurance.",
+  "__constraints_enforced": [
+    "single-constraint-mutations",
+    "explicit-expected-error-keywords",
+    "schema-bound-manifest"
+  ],
+  "__upstream": "run-determinism-harness",
+  "__downstream": "run-mutation-suite",
+  "$schema": "../../schemas/mutation-manifest.schema.json",
+  "mutations": [
+    {
+      "mutation_id": "MUT-001",
+      "target_schema": "schemas/s-in.schema.json",
+      "description": "Remove required pipelineVersion field",
+      "mutation_type": "missing_required_field",
+      "fixture_path": "test/mutations/MUT-001-missing-required.json",
+      "expected_error_keyword": "required"
+    },
+    {
+      "mutation_id": "MUT-002",
+      "target_schema": "schemas/s-in.schema.json",
+      "description": "Pass wrong type for executionPlan (string instead of object)",
+      "mutation_type": "wrong_type",
+      "fixture_path": "test/mutations/MUT-002-wrong-type.json",
+      "expected_error_keyword": "type"
+    },
+    {
+      "mutation_id": "MUT-003",
+      "target_schema": "schemas/s-in.schema.json",
+      "description": "Add unexpected additional property",
+      "mutation_type": "additional_property",
+      "fixture_path": "test/mutations/MUT-003-additional-property.json",
+      "expected_error_keyword": "additionalProperties"
+    },
+    {
+      "mutation_id": "MUT-004",
+      "target_schema": "schemas/s-in.schema.json",
+      "description": "Provide executionPlan.stage value outside enum",
+      "mutation_type": "enum_violation",
+      "fixture_path": "test/mutations/MUT-004-enum-violation.json",
+      "expected_error_keyword": "enum"
+    },
+    {
+      "mutation_id": "MUT-005",
+      "target_schema": "schemas/s-in.schema.json",
+      "description": "Provide invalid semantic version format for pipelineVersion pattern",
+      "mutation_type": "pattern_violation",
+      "fixture_path": "test/mutations/MUT-005-pattern-violation.json",
+      "expected_error_keyword": "pattern"
+    }
+  ]
+}

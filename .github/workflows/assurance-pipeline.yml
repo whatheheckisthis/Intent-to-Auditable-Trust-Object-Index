@@ -366,8 +366,42 @@ jobs:
           path: pipeline/outputs/evidence-bundle/
           retention-days: 2557
 
-  generate-runbook:
-    needs: [package-evidence-bundle]
+  register-webhooks:
+    needs: [run-determinism-harness, package-evidence-bundle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Write webhook auth token from secret
+        run: |
+          set -euo pipefail
+          mkdir -p /run/secrets
+          echo '${{ secrets.WEBHOOK_AUTH_TOKEN }}' > /run/secrets/webhook-auth-token
+
+      - name: Inject webhook endpoint URLs from secret manifest
+        run: |
+          set -euo pipefail
+          echo '${{ secrets.WEBHOOK_ENDPOINTS_B64 }}' | base64 -d > /tmp/webhook-endpoints.json
+          node pipeline/inject-webhook-endpoints.js \
+            --endpoints /tmp/webhook-endpoints.json \
+            --config pipeline/webhook-config.json
+
+      - name: Register webhook endpoints
+        run: |
+          set -euo pipefail
+          node pipeline/register-webhooks.js
+
+      - name: Upload registration record
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: webhook-registration
+          path: pipeline/outputs/webhook-registration.json
+          retention-days: 2557
+
+  embed-canaries:
+    needs: [register-webhooks, validate-inputs]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -378,6 +412,49 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: regulatory-evidence-bundle
+          path: pipeline/outputs/evidence-bundle/
+
+      # CONSTRAINT TRADE-OFF:
+      # The canary manifest contains live token URLs and must be treated as a secret.
+      # It is written to a temp file from a GitHub Actions secret (base64-encoded JSON),
+      # then read from that fixed path by embed-canaries.js.
+      - name: Write canary manifest from secret
+        run: |
+          set -euo pipefail
+          echo '${{ secrets.CANARY_MANIFEST_B64 }}' | base64 -d > /tmp/canary-manifest.json
+
+      - name: Validate canary manifest schema
+        run: |
+          set -euo pipefail
+          AJV_CLI_VERSION='${{ needs.validate-inputs.outputs.ajv_cli_version }}'
+          npx --yes "ajv-cli@${AJV_CLI_VERSION}" validate \
+            -s schemas/canary-manifest.schema.json \
+            -d /tmp/canary-manifest.json
+
+      - name: Embed canary tokens
+        run: |
+          set -euo pipefail
+          CANARY_INPUT=/tmp/canary-manifest.json node pipeline/embed-canaries.js
+
+      - name: Upload canary-embedded bundle
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: canary-embedded-bundle
+          path: pipeline/outputs/evidence-bundle/
+          retention-days: 2557
+
+  generate-runbook:
+    needs: [embed-canaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Download evidence bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: canary-embedded-bundle
           path: pipeline/outputs/evidence-bundle/
 
       - name: Generate runbook

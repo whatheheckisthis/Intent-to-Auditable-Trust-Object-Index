@@ -10,6 +10,7 @@
   ],
   "__upstream": "ROOT",
   "__downstream": "validate-inputs",
+  "pipeline_run_ref": "INJECTED_FROM_GIT_SHA_OR_PIPELINE_RUN_ID",
   "pipeline": {
     "timeoutsMinutes": {
       "build-containers": 20,

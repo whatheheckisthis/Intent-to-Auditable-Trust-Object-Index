@@ -1,0 +1,36 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so runtime-validated config omits file comments and keeps placeholders for secret endpoint URLs.",
+  "__file": "pipeline/webhook-config.json",
+  "__role": "Named webhook endpoint configuration with runtime URL injection placeholders.",
+  "__constraints_enforced": [
+    "runtime-secret-endpoint-injection",
+    "file-mounted-auth-token",
+    "no-literal-secret-values"
+  ],
+  "__upstream": "run-determinism-harness",
+  "__downstream": "register-webhooks",
+  "__ism_controls": ["ISM-0109", "ISM-0140", "ISM-1554", "ISM-1858"],
+  "endpoints": {
+    "security_operations": {
+      "endpoint_url": "INJECT_FROM_SECRETS_MANIFEST",
+      "auth_header_name": "X-Webhook-Token",
+      "auth_header_value_path": "/run/secrets/webhook-auth-token",
+      "enabled": true,
+      "ism_controls": ["ISM-0109", "ISM-1554"]
+    },
+    "canary_normaliser": {
+      "endpoint_url": "INJECT_FROM_SECRETS_MANIFEST",
+      "auth_header_name": "X-Webhook-Token",
+      "auth_header_value_path": "/run/secrets/webhook-auth-token",
+      "enabled": true,
+      "ism_controls": ["ISM-0140", "ISM-0585"]
+    },
+    "sbom_monitor": {
+      "endpoint_url": "INJECT_FROM_SECRETS_MANIFEST",
+      "auth_header_name": "X-Webhook-Token",
+      "auth_header_value_path": "/run/secrets/webhook-auth-token",
+      "enabled": true,
+      "ism_controls": ["ISM-1858"]
+    }
+  }
+}

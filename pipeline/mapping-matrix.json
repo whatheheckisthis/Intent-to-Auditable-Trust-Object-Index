@@ -112,6 +112,49 @@
       "pipeline_stage": "embed-canaries",
       "attestation_type": "canary-placement-log-v1",
       "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-PAC-01",
+      "control_description": "OPA/Conftest live evaluation of JSON policy object against Podman runtime configuration",
+      "framework_refs": [
+        "ISM-0149",
+        "ISM-1491",
+        "ISM-0407",
+        "E8-ML3-APP-2",
+        "SOC2-CC6.6"
+      ],
+      "evidence_artefact": "pipeline/outputs/pac-evaluation-result.json",
+      "pipeline_stage": "evaluate-policies",
+      "attestation_type": "conftest-opa-pac-v1",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-PAC-02",
+      "control_description": "Azure Policy policyRule shape present and schema-valid; live evaluation out of pipeline scope",
+      "framework_refs": [
+        "ISM-1491",
+        "E8-ML3-APP-2",
+        "SOC2-CC6.6"
+      ],
+      "evidence_artefact": "policies/pac-policy.json",
+      "pipeline_stage": "evaluate-policies",
+      "attestation_type": "azure-policy-structural-v1",
+      "coverage_status": "COVERAGE_STRUCTURAL_ONLY",
+      "gap_note": "Live evaluation requires Azure Resource Manager API access. Requires cloud-bound runner configuration external to this pipeline."
+    },
+    {
+      "control_id": "CTRL-PAC-03",
+      "control_description": "AWS IAM/SCP Statement shape present and schema-valid; live evaluation out of pipeline scope",
+      "framework_refs": [
+        "ISM-1491",
+        "E8-ML3-APP-2",
+        "SOC2-CC8.1"
+      ],
+      "evidence_artefact": "policies/pac-policy.json",
+      "pipeline_stage": "evaluate-policies",
+      "attestation_type": "aws-iam-structural-v1",
+      "coverage_status": "COVERAGE_STRUCTURAL_ONLY",
+      "gap_note": "Live evaluation requires AWS STS credentials and account context. Requires cloud-bound runner configuration external to this pipeline."
     }
   ]
 }

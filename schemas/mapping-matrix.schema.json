@@ -12,7 +12,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["generated_at_parameter", "framework_version", "mappings"],
+  "required": [
+    "generated_at_parameter",
+    "framework_version",
+    "mappings"
+  ],
   "properties": {
     "generated_at_parameter": {
       "type": "string",
@@ -38,22 +42,91 @@
           "coverage_status"
         ],
         "properties": {
-          "control_id": { "type": "string", "minLength": 1 },
-          "control_description": { "type": "string", "minLength": 1 },
+          "control_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "control_description": {
+            "type": "string",
+            "minLength": 1
+          },
           "framework_refs": {
             "type": "array",
             "minItems": 1,
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "evidence_artefact": { "type": "string", "minLength": 1 },
-          "pipeline_stage": { "type": "string", "minLength": 1 },
-          "attestation_type": { "type": "string", "minLength": 1 },
+          "evidence_artefact": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pipeline_stage": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attestation_type": {
+            "type": "string",
+            "minLength": 1
+          },
           "coverage_status": {
             "type": "string",
-            "enum": ["COVERED", "PARTIAL", "GAP"]
+            "enum": [
+              "COVERED",
+              "PARTIAL",
+              "GAP",
+              "COVERAGE_STRUCTURAL_ONLY"
+            ]
+          },
+          "gap_note": {
+            "type": "string",
+            "minLength": 1
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "coverage_status": {
+                  "const": "COVERAGE_STRUCTURAL_ONLY"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "gap_note"
+              ]
+            }
+          }
+        ]
       }
+    },
+    "# CONSTRAINT TRADE-OFF": {
+      "type": "string"
+    },
+    "__file": {
+      "type": "string"
+    },
+    "__role": {
+      "type": "string"
+    },
+    "__constraints_enforced": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "__upstream": {
+      "type": "string"
+    },
+    "__downstream": {
+      "type": "string"
+    },
+    "$schema": {
+      "type": "string",
+      "minLength": 1
     }
   }
 }

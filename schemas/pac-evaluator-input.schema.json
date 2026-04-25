@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "../schemas/pac-evaluator-input.schema.json",
+  "$comment": "File: schemas/pac-evaluator-input.schema.json | Role: Draft-2020-12 schema for schema-bound pac-evaluator input payload. | Constraints enforced: required static paths, no runtime env reads, no additional properties. | Upstream: evaluate-policies | Downstream: policies/pac-evaluator.js | ISM controls: ISM-0149, ISM-1491, ISM-0407.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "policy_file_path",
+    "policy_schema_path",
+    "policy_dir_path",
+    "conftest_input_path",
+    "output_path",
+    "pipeline_run_ref"
+  ],
+  "properties": {
+    "# CONSTRAINT TRADE-OFF": { "type": "string" },
+    "__file": { "type": "string" },
+    "__role": { "type": "string" },
+    "__constraints_enforced": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "__upstream": { "type": "string" },
+    "__downstream": { "type": "string" },
+    "$schema": { "type": "string", "const": "../schemas/pac-evaluator-input.schema.json" },
+    "policy_file_path": { "type": "string", "minLength": 1 },
+    "policy_schema_path": { "type": "string", "minLength": 1 },
+    "policy_dir_path": { "type": "string", "minLength": 1 },
+    "conftest_input_path": { "type": "string", "minLength": 1 },
+    "output_path": { "type": "string", "minLength": 1 },
+    "pipeline_run_ref": { "type": "string", "minLength": 1 }
+  }
+}

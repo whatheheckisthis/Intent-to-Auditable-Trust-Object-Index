@@ -1,0 +1,71 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/webhook-config.schema.json",
+  "__role": "Schema for named webhook endpoint configuration objects.",
+  "__constraints_enforced": [
+    "uri-validated-endpoints",
+    "file-mounted-auth-token-path",
+    "no-additional-properties"
+  ],
+  "__upstream": "inject-webhook-endpoints",
+  "__downstream": "register-webhooks",
+  "__ism_controls": ["ISM-0109", "ISM-0140", "ISM-1554", "ISM-1858"],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WebhookConfigSet",
+  "type": "object",
+  "required": ["endpoints"],
+  "additionalProperties": false,
+  "properties": {
+    "# CONSTRAINT TRADE-OFF": { "type": "string" },
+    "__file": { "type": "string" },
+    "__role": { "type": "string" },
+    "__constraints_enforced": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "__upstream": { "type": "string" },
+    "__downstream": { "type": "string" },
+    "__ism_controls": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "endpoints": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "endpoint_url",
+          "auth_header_name",
+          "auth_header_value_path",
+          "enabled",
+          "ism_controls"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "endpoint_url": {
+            "type": "string",
+            "description": "Endpoint URL for webhook POST dispatch. May be runtime-injected.",
+            "anyOf": [
+              { "format": "uri" },
+              { "const": "INJECT_FROM_SECRETS_MANIFEST" }
+            ]
+          },
+          "auth_header_name": {
+            "type": ["string", "null"]
+          },
+          "auth_header_value_path": {
+            "type": ["string", "null"],
+            "description": "Path to a file containing the auth token — never the token itself."
+          },
+          "enabled": { "type": "boolean" },
+          "ism_controls": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

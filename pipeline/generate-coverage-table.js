@@ -35,12 +35,31 @@ const rows = matrix.mappings
   })
   .join('\n');
 
+const detectionRows = matrix.mappings
+  .filter((entry) => entry.control_id.startsWith('CTRL-DETECT-'))
+  .map((entry) => {
+    const statusEmoji = entry.coverage_status === 'COVERED'
+      ? '✅'
+      : entry.coverage_status === 'PARTIAL'
+        ? '⚠️'
+        : '❌';
+
+    return `| ${entry.control_id} | ${entry.control_description} | ${entry.framework_refs.join(', ')} | ${entry.evidence_artefact} | ${entry.pipeline_stage} | ${statusEmoji} ${entry.coverage_status} |`;
+  })
+  .join('\n');
+
 const markdown = [
   `## Control Coverage — ${matrix.framework_version}`,
   '',
   '| Control ID | Description | Frameworks | Evidence Artefact | Stage | Status |',
   '|:---|:---|:---|:---|:---|:---|',
   rows,
+  '',
+  '## Detection & Monitoring',
+  '',
+  '| Control ID | Description | Frameworks | Evidence Artefact | Stage | Status |',
+  '|:---|:---|:---|:---|:---|:---|',
+  detectionRows || '| N/A | No detection and monitoring controls declared | N/A | N/A | N/A | N/A |',
   ''
 ].join('\n');
 

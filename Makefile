@@ -3,7 +3,7 @@
 # Constraints enforced: explicit DAG prerequisites, Podman-only commands, --read-only, --network=none, --env-host=false on all runs.
 # Upstream: ROOT
 # Downstream: emit-trace-matrix
-.PHONY: all validate-inputs build-containers run-governance-policy run-cross-framework-alignment run-execution-orchestration run-validation-analytics generate-sbom evaluate-policies sign-and-attest emit-trace-matrix run-determinism-harness run-mutation-suite package-evidence-bundle generate-runbook
+.PHONY: all validate-inputs build-containers run-governance-policy run-cross-framework-alignment run-execution-orchestration run-validation-analytics generate-sbom evaluate-policies sign-and-attest emit-trace-matrix run-determinism-harness run-mutation-suite package-evidence-bundle register-webhooks embed-canaries generate-runbook
 
 all: generate-runbook
 
@@ -82,7 +82,14 @@ run-mutation-suite: run-determinism-harness
 package-evidence-bundle: run-mutation-suite
 	node pipeline/package-evidence-bundle.js
 
+register-webhooks: run-determinism-harness
+	node pipeline/register-webhooks.js
 
-generate-runbook: package-evidence-bundle
+embed-canaries: package-evidence-bundle
+	@[ -f "$(CANARY_MANIFEST_PATH)" ] || \
+	  (echo "CANARY_MANIFEST_PATH not set or file not found" && exit 1)
+	CANARY_INPUT="$(CANARY_MANIFEST_PATH)" node pipeline/embed-canaries.js
+
+generate-runbook: embed-canaries
 	node pipeline/generate-runbook.js
 	@echo "Runbook written to pipeline/outputs/runbook/"

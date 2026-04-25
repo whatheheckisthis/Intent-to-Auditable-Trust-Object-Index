@@ -9,7 +9,12 @@
   ],
   "__upstream": "register-webhooks",
   "__downstream": "security_operations",
-  "__ism_controls": ["ISM-0109", "ISM-0140", "ISM-1554", "ISM-1858"],
+  "__ism_controls": [
+    "ISM-0109",
+    "ISM-0140",
+    "ISM-1554",
+    "ISM-1858"
+  ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "WebhookAlert",
   "description": "Structured alert payload for all pipeline and canary tripwire events.",
@@ -20,7 +25,9 @@
     "pipeline_run_ref",
     "severity",
     "ism_controls",
-    "detail"
+    "detail",
+    "acknowledgement_required",
+    "acknowledgement_window_seconds"
   ],
   "additionalProperties": false,
   "properties": {
@@ -45,27 +52,53 @@
     },
     "severity": {
       "type": "string",
-      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+      "enum": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ]
     },
     "ism_controls": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "detail": {
       "type": "object",
-      "required": ["source_stage", "message"],
+      "required": [
+        "source_stage",
+        "message"
+      ],
       "additionalProperties": true,
       "properties": {
-        "source_stage": { "type": "string" },
-        "message": { "type": "string" },
-        "token_id": { "type": "string" },
-        "artefact_path": { "type": "string" },
+        "source_stage": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "string"
+        },
+        "artefact_path": {
+          "type": "string"
+        },
         "digest": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$"
         }
       }
+    },
+    "acknowledgement_required": {
+      "type": "boolean",
+      "default": true
+    },
+    "acknowledgement_window_seconds": {
+      "type": "integer",
+      "minimum": 1
     }
   }
 }

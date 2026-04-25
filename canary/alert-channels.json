@@ -1,0 +1,61 @@
+{
+  "# CONSTRAINT TRADE-OFF": "Escalation to CRITICAL for missed acknowledgements is enforced by alert consumer logic; schema captures policy contract but cannot execute escalation.",
+  "__file": "canary/alert-channels.json",
+  "__role": "Alert channel routing, acknowledgement policy, and fatigue guard for TraceBit detections.",
+  "__constraints_enforced": [
+    "acknowledge-first-discipline",
+    "critical-escalation-window-policy",
+    "dedup-fatigue-guard"
+  ],
+  "__upstream": "register-webhooks",
+  "__downstream": "security_operations",
+  "__ism_controls": ["ISM-0109", "ISM-1554", "ISM-1858"],
+  "$schema": "../schemas/alert-channels.schema.json",
+  "channels": {
+    "slack_webhook": {
+      "type": "slack",
+      "endpoint_path": "/run/secrets/slack-canary-webhook-url",
+      "severity_threshold": "MEDIUM",
+      "acknowledgement_required": true,
+      "acknowledgement_window_seconds": 300,
+      "ism_controls": ["ISM-0109", "ISM-1554"]
+    },
+    "grafana_irm": {
+      "type": "grafana_irm",
+      "endpoint_path": "/run/secrets/grafana-irm-api-key",
+      "severity_threshold": "HIGH",
+      "acknowledgement_required": true,
+      "acknowledgement_window_seconds": 180,
+      "paging_mode": "24x7",
+      "ism_controls": ["ISM-0109", "ISM-1554"]
+    },
+    "siem": {
+      "type": "splunk_hec",
+      "endpoint_path": "/run/secrets/splunk-hec-token",
+      "severity_threshold": "LOW",
+      "acknowledgement_required": false,
+      "acknowledgement_window_seconds": 900,
+      "structured_format": "cef",
+      "ism_controls": ["ISM-0109", "ISM-1554", "ISM-1858"]
+    },
+    "ticketing": {
+      "type": "webhook",
+      "endpoint_path": "/run/secrets/ticketing-webhook-url",
+      "severity_threshold": "HIGH",
+      "acknowledgement_required": false,
+      "acknowledgement_window_seconds": 900,
+      "ism_controls": ["ISM-1554"]
+    }
+  },
+  "severity_routing": {
+    "CRITICAL": ["grafana_irm", "slack_webhook", "siem", "ticketing"],
+    "HIGH": ["slack_webhook", "siem", "ticketing"],
+    "MEDIUM": ["slack_webhook", "siem"],
+    "LOW": ["siem"]
+  },
+  "fatigue_guard": {
+    "max_alerts_per_token_per_hour": 5,
+    "dedup_window_seconds": 60,
+    "acknowledge_to_ungroup_note": "Acknowledge each alert on the Thinkst platform promptly. Unacknowledged alerts are grouped, masking repeated triggers from different IP addresses."
+  }
+}

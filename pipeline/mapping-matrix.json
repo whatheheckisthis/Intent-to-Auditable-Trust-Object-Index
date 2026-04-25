@@ -155,6 +155,55 @@
       "attestation_type": "aws-iam-structural-v1",
       "coverage_status": "COVERAGE_STRUCTURAL_ONLY",
       "gap_note": "Live evaluation requires AWS STS credentials and account context. Requires cloud-bound runner configuration external to this pipeline."
+    },
+    {
+      "control_id": "CTRL-TRACE-01",
+      "control_description": "Multi-type Thinkst Canary Token deployment across full asset surface via flock-organised placement manifest",
+      "framework_refs": [
+        "ISM-0140",
+        "ISM-0585",
+        "ISM-0109"
+      ],
+      "evidence_artefact": "pipeline/outputs/tracebit-deployment-log.json",
+      "pipeline_stage": "embed-canaries",
+      "attestation_type": "tracebit-deployment-log-v1",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-TRACE-02",
+      "control_description": "Structured reminder metadata on all tokens enabling forensic pinpointing of intrusion source",
+      "framework_refs": [
+        "ISM-0140",
+        "ISM-1554"
+      ],
+      "evidence_artefact": "canary/tracebit-placement-manifest.json",
+      "pipeline_stage": "embed-canaries",
+      "attestation_type": "tracebit-reminder-schema-v1",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-TRACE-03",
+      "control_description": "Alert severity routing across Slack, Grafana IRM, SIEM, and ticketing with acknowledge-first discipline",
+      "framework_refs": [
+        "ISM-0109",
+        "ISM-1554"
+      ],
+      "evidence_artefact": "canary/alert-channels.json",
+      "pipeline_stage": "register-webhooks",
+      "attestation_type": "alert-channels-v1",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-TRACE-04",
+      "control_description": "Token rotation and forensic archival enforced by pipeline run count \u2014 no clock dependency",
+      "framework_refs": [
+        "ISM-0140",
+        "ISM-1858"
+      ],
+      "evidence_artefact": "pipeline/outputs/tracebit-rotation-log.json",
+      "pipeline_stage": "embed-canaries",
+      "attestation_type": "tracebit-rotation-log-v1",
+      "coverage_status": "COVERED"
     }
   ]
 }

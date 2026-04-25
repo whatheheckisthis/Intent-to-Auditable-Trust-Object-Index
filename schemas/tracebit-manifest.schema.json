@@ -1,0 +1,97 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON Schema draft-2020-12 cannot enforce uniqueness of a single object field across array items; deployer and rotator enforce placement_target uniqueness post-validation.",
+  "__file": "schemas/tracebit-manifest.schema.json",
+  "__role": "Schema-bound placement manifest for Thinkst/TraceBit token orchestration.",
+  "__constraints_enforced": [
+    "token-name-deception-pattern",
+    "public-visibility-token-type-guard",
+    "structured-reminder-string-contract"
+  ],
+  "__upstream": "asset-surface-map",
+  "__downstream": "embed-canaries",
+  "__ism_controls": ["ISM-0109", "ISM-0140", "ISM-0585", "ISM-1554"],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TracebitPlacementManifest",
+  "type": "object",
+  "required": ["manifest_version", "placements"],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_version": { "type": "string", "const": "1.0.0" },
+    "placements": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "$comment": "Array-level uniqueItems catches full-object duplicates only. placement_target uniqueness is enforced in deployer/rotator scripts.",
+      "items": {
+        "type": "object",
+        "required": [
+          "token_id",
+          "token_name",
+          "token_type",
+          "flock_id",
+          "placement_target",
+          "placement_strategy",
+          "placement_visibility",
+          "reminder",
+          "rotation_after_runs",
+          "ism_controls"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "token_id": { "type": "string", "pattern": "^TRACE-[A-Z0-9]{5,8}$" },
+          "token_name": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{3,31}$",
+            "not": { "pattern": "(?i)(canary|test|dummy|fake|honeypot)" }
+          },
+          "token_type": {
+            "type": "string",
+            "enum": [
+              "aws_api_key", "azure_id", "gcp_service_account", "github_pat", "slack_token",
+              "pdf", "google_doc", "word_doc", "excel_doc", "url", "dns", "email", "cmd",
+              "windows_registry", "mysql_credentials", "cloned_website", "credit_card",
+              "custom_image", "sql_server", "fast_redirect", "slow_redirect"
+            ]
+          },
+          "flock_id": { "type": "string", "pattern": "^FLOCK-[A-Z0-9-]{3,32}$" },
+          "placement_target": { "type": "string", "minLength": 3 },
+          "placement_strategy": {
+            "type": "string",
+            "enum": [
+              "embed_as_env_var", "embed_as_config_comment", "embed_as_branch_env_file",
+              "embed_as_iam_policy_field", "embed_as_metadata_document", "embed_as_pdf",
+              "embed_as_google_doc_link", "embed_as_dns_record", "embed_as_url_reference",
+              "embed_as_credentials_file", "embed_as_registry_entry", "embed_as_workflow_step"
+            ]
+          },
+          "placement_visibility": { "type": "string", "enum": ["public", "private", "internal"] },
+          "reminder": { "type": "string", "minLength": 2 },
+          "rotation_after_runs": { "type": "integer", "minimum": 1 },
+          "ism_controls": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^ISM-[0-9]{4}$" },
+            "uniqueItems": true
+          },
+          "alert_on_trigger": { "type": "boolean", "default": true }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "placement_visibility": { "const": "public" }
+              },
+              "required": ["placement_visibility"]
+            },
+            "then": {
+              "properties": {
+                "token_type": { "enum": ["url", "dns"] },
+                "placement_strategy": { "enum": ["embed_as_url_reference", "embed_as_dns_record"] }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

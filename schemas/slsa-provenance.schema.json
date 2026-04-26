@@ -1,0 +1,29 @@
+{
+  "# File": "schemas/slsa-provenance.schema.json",
+  "# Role": "Schema for DSSE-wrapped in-toto SLSA provenance envelope.",
+  "# Constraints enforced": "typed DSSE envelope, payloadType const, signature presence",
+  "# Upstream": "slsa-provenance",
+  "# Downstream": "verify-provenance-and-tokens",
+  "# ISM controls": "ISM-0149, ISM-1753, ISM-1858",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["payloadType", "payload", "signatures"],
+  "properties": {
+    "payloadType": { "type": "string", "const": "application/vnd.in-toto+json" },
+    "payload": { "type": "string", "minLength": 1 },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sig"],
+        "properties": {
+          "sig": { "type": "string", "minLength": 1 },
+          "keyid": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

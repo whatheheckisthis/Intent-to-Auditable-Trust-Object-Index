@@ -165,6 +165,58 @@ jobs:
             localhost/assurance/validation-analytics:deterministic \
             /app/entrypoint /inputs/pipeline.config.json /evidence/execution-orchestration.json /evidence/validation-analytics.json
 
+  build-and-hash:
+    needs: [run-validation-analytics]
+    runs-on: ubuntu-latest
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Download all pipeline artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: pipeline/outputs/
+      - name: Compute SHA-256 digests of build artefacts
+        id: hash
+        run: |
+          set -euo pipefail
+          ARTEFACTS=(
+            "pipeline/outputs/evidence-bundle/bundle-manifest.json"
+            "pipeline/outputs/sbom-cyclonedx.json"
+            "pipeline/outputs/pac-evaluation-result.json"
+            "pipeline/outputs/harness/determinism-result.json"
+          )
+          sha256sum "${ARTEFACTS[@]}" | base64 -w0 > hashes.txt
+          echo "hashes=$(cat hashes.txt)" >> "$GITHUB_OUTPUT"
+      - name: Upload artefacts for downstream jobs
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: build-artefacts
+          path: pipeline/outputs/
+          retention-days: 1
+
+  slsa-provenance:
+    # CONSTRAINT TRADE-OFF:
+    # Prior iterations require all `uses:` action references to be pinned to a full commit
+    # SHA. The SLSA Generic Generator reusable workflow must be referenced by tag (@vX.Y.Z)
+    # for slsa-verifier to resolve the trusted builder ref. This is tracked as Issue #12 in
+    # the slsa-verifier project. The trade-off is accepted because the SLSA generator itself
+    # is the trust root for provenance — the tag reference is verified by the SLSA framework,
+    # not by the caller workflow. All other non-SLSA actions remain SHA-pinned.
+    needs: [build-and-hash]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: "${{ needs.build-and-hash.outputs.hashes }}"
+      provenance-name: assurance-platform.intoto.jsonl
+      upload-assets: false
+
+
   generate-sbom:
     needs: [run-validation-analytics, validate-inputs]
     timeout-minutes: ${{ fromJSON(needs.validate-inputs.outputs.timeouts).generate-sbom }}
@@ -357,7 +409,7 @@ jobs:
           fi
 
   package-evidence-bundle:
-    needs: [run-mutation-suite]
+    needs: [run-mutation-suite, verify-provenance-and-tokens]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -427,61 +479,102 @@ jobs:
           retention-days: 2557
 
   embed-canaries:
-    needs: [register-webhooks, validate-inputs]
+    needs: [slsa-provenance]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - name: Download evidence bundle
+      - name: Download build artefacts
         uses: actions/download-artifact@v4
         with:
-          name: regulatory-evidence-bundle
-          path: pipeline/outputs/evidence-bundle/
-
+          name: build-artefacts
+          path: pipeline/outputs/
+      - name: Download SLSA provenance document
+        uses: actions/download-artifact@v4
+        with:
+          name: assurance-platform.intoto.jsonl
+          path: pipeline/outputs/provenance/
       # CONSTRAINT TRADE-OFF:
-      # The canary manifest contains live token URLs and must be treated as a secret.
-      # It is written to a temp file from a GitHub Actions secret (base64-encoded JSON),
-      # then read from that fixed path by embed-canaries.js.
-      - name: Write canary manifest from secret
+      # The Thinkst Flock API key and console domain are secrets. They are written to
+      # temp files from GitHub Actions secrets, then read by the deployer as file paths.
+      - name: Write Thinkst credentials from secrets
         run: |
           set -euo pipefail
-          echo '${{ secrets.CANARY_MANIFEST_B64 }}' | base64 -d > /tmp/canary-manifest.json
-
-      - name: Validate canary manifest schema
+          mkdir -p /run/secrets
+          echo '${{ secrets.THINKST_FLOCK_API_KEY }}' > /run/secrets/thinkst-flock-api-key
+          echo '${{ secrets.THINKST_CONSOLE_DOMAIN }}' > /run/secrets/thinkst-console-domain
+      - name: Write canary secrets manifest from secret
+        run: |
+          set -euo pipefail
+          echo '${{ secrets.CANARY_SECRETS_MANIFEST_B64 }}' | base64 -d > /tmp/canary-secrets-manifest.json
+      - name: Validate canary secrets manifest schema
         run: |
           set -euo pipefail
           AJV_CLI_VERSION='${{ needs.validate-inputs.outputs.ajv_cli_version }}'
-          npx --yes "ajv-cli@${AJV_CLI_VERSION}" validate \
-            -s schemas/canary-manifest.schema.json \
-            -d /tmp/canary-manifest.json
-
-      - name: Embed canary tokens
+          npx --yes "ajv-cli@${AJV_CLI_VERSION}" validate             -s schemas/tracebit-secrets-manifest.schema.json             -d /tmp/canary-secrets-manifest.json
+      - name: Deploy Canary Tokens via Thinkst API
         run: |
           set -euo pipefail
-          CANARY_INPUT=/tmp/canary-manifest.json node pipeline/embed-canaries.js
-
-      - name: Upload canary-embedded bundle
+          node canary/tracebit-build-deployer.js             --input pipeline/canary-build-deployer-input.json
+      - name: Upload canary-embedded artefacts
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
-          name: canary-embedded-bundle
-          path: pipeline/outputs/evidence-bundle/
+          name: canary-embedded-artefacts
+          path: pipeline/outputs/
           retention-days: 2557
 
-  generate-runbook:
+  verify-provenance-and-tokens:
     needs: [embed-canaries]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Install slsa-verifier
+        run: |
+          set -euo pipefail
+          SLSA_VERIFIER_VERSION=$(jq -r '.slsa_verifier_version' pipeline/pipeline.config.json)
+          curl -Lo slsa-verifier             "https://github.com/slsa-framework/slsa-verifier/releases/download/v${SLSA_VERIFIER_VERSION}/slsa-verifier-linux-amd64"
+          chmod +x slsa-verifier
+          install -m 0755 slsa-verifier /usr/local/bin/slsa-verifier
+      - name: Download canary-embedded artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: canary-embedded-artefacts
+          path: pipeline/outputs/
+      - name: Verify SLSA provenance
+        run: |
+          set -euo pipefail
+          slsa-verifier verify-artifact             pipeline/outputs/evidence-bundle/bundle-manifest.json             --provenance-path pipeline/outputs/provenance/assurance-platform.intoto.jsonl             --source-uri "github.com/${{ github.repository }}"             --source-tag "${{ github.ref_name }}"
+      - name: Assert all canary tokens deployed
+        run: |
+          set -euo pipefail
+          DEPLOYED=$(jq '.deployed' pipeline/outputs/tracebit-build-deployment-log.json)
+          TOTAL=$(jq '.total_placements' pipeline/outputs/tracebit-build-deployment-log.json)
+          if [ "$DEPLOYED" -ne "$TOTAL" ]; then
+            echo "CANARY_DEPLOYMENT_INCOMPLETE: $DEPLOYED/$TOTAL tokens deployed"
+            exit 1
+          fi
+      - name: Validate provenance schema
+        run: |
+          set -euo pipefail
+          AJV_CLI_VERSION='${{ needs.validate-inputs.outputs.ajv_cli_version }}'
+          npx --yes "ajv-cli@${AJV_CLI_VERSION}" validate             -s schemas/slsa-provenance.schema.json             -d pipeline/outputs/provenance/assurance-platform.intoto.jsonl
+
+  generate-runbook:
+    needs: [verify-provenance-and-tokens, register-webhooks]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
       - name: Download evidence bundle
         uses: actions/download-artifact@v4
         with:
-          name: canary-embedded-bundle
-          path: pipeline/outputs/evidence-bundle/
+          name: canary-embedded-artefacts
+          path: pipeline/outputs/
 
       - name: Generate runbook
         run: node pipeline/generate-runbook.js

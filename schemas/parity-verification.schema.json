@@ -1,0 +1,40 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/parity-verification.schema.json",
+  "__role": "Schema for local/CI parity verification outcomes.",
+  "__constraints_enforced": [
+    "typed-parity-status",
+    "digest-comparison-status-enum",
+    "no-additional-properties"
+  ],
+  "__upstream": "pipeline/verify-parity.js",
+  "__downstream": "verify-parity",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["overall_status", "baseline_path", "artefacts"],
+  "properties": {
+    "overall_status": {
+      "type": "string",
+      "enum": ["PARITY_VERIFIED", "PARITY_DIVERGED"]
+    },
+    "baseline_path": { "type": "string" },
+    "artefacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "expected_digest", "actual_digest", "status"],
+        "properties": {
+          "path": { "type": "string" },
+          "expected_digest": { "type": "string" },
+          "actual_digest": { "type": ["string", "null"] },
+          "status": {
+            "type": "string",
+            "enum": ["DIGEST_MATCH", "DIGEST_MISMATCH", "FILE_NOT_FOUND"]
+          }
+        }
+      }
+    }
+  }
+}

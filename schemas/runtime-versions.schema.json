@@ -1,0 +1,44 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/runtime-versions.schema.json",
+  "__role": "Schema for declared runtime version and environment policy constants.",
+  "__constraints_enforced": [
+    "semver-string-enforcement",
+    "strict-required-fields",
+    "no-additional-properties"
+  ],
+  "__upstream": "pipeline/runtime-versions.json",
+  "__downstream": "pipeline/verify-runtime.js",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "runtime_versions",
+    "node_engine",
+    "npm_engine",
+    "blocked_env_vars",
+    "allowed_env_vars"
+  ],
+  "properties": {
+    "runtime_versions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      }
+    },
+    "node_engine": { "type": "string", "minLength": 1 },
+    "npm_engine": { "type": "string", "minLength": 1 },
+    "blocked_env_vars": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "allowed_env_vars": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

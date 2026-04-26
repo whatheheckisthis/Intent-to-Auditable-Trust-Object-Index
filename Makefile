@@ -3,10 +3,54 @@
 # Constraints enforced: explicit DAG prerequisites, Podman-only commands, --read-only, --network=none, --env-host=false on all runs.
 # Upstream: ROOT
 # Downstream: emit-trace-matrix
-.PHONY: all validate-inputs build-containers run-governance-policy run-cross-framework-alignment run-execution-orchestration run-validation-analytics generate-sbom evaluate-policies sign-and-attest emit-trace-matrix run-determinism-harness run-mutation-suite package-evidence-bundle register-webhooks embed-canaries generate-runbook
+.PHONY: all validate-inputs build-containers run-governance-policy run-cross-framework-alignment run-execution-orchestration run-validation-analytics generate-sbom evaluate-policies sign-and-attest emit-trace-matrix run-determinism-harness run-mutation-suite package-evidence-bundle register-webhooks embed-canaries generate-runbook verify-runtime capture-parity-baseline verify-parity run-full-pipeline
 AJV_VERSION ?= 5.0.0
 
 all: generate-runbook
+
+verify-runtime:
+	node pipeline/verify-runtime.js \
+	  --config pipeline/runtime-versions.json \
+	  --output pipeline/outputs/runtime-verification.json
+	@STATUS=$$(jq -r '.overall_status' \
+	  pipeline/outputs/runtime-verification.json); \
+	  [ "$$STATUS" = "RUNTIME_CONSISTENT" ] || \
+	  (node pipeline/emit-failure.js \
+	    --type RUNTIME_INCONSISTENT --stage local \
+	    --run-ref "$$(git rev-parse HEAD)" && exit 1)
+
+capture-parity-baseline: verify-runtime
+	@git diff --quiet || \
+	  (echo "PARITY_BASELINE_ERROR: working tree is dirty — baseline must be captured on a clean tree matching the last CI pass" && exit 1)
+	node pipeline/capture-parity-baseline.js \
+	  --run-ref "$$(git rev-parse HEAD)" \
+	  --output pipeline/parity-baseline.json
+
+verify-parity: verify-runtime run-full-pipeline
+	node pipeline/verify-parity.js \
+	  --baseline pipeline/parity-baseline.json \
+	  --output pipeline/outputs/parity-verification.json
+	@STATUS=$$(jq -r '.overall_status' pipeline/outputs/parity-verification.json); \
+	  [ "$$STATUS" = "PARITY_VERIFIED" ] || \
+	  (echo "LOCAL_CI_PARITY_FAILURE: local outputs diverge from CI baseline" && exit 1)
+
+run-full-pipeline: verify-runtime \
+                   validate-inputs \
+                   build-containers \
+                   run-governance-policy \
+                   run-cross-framework-alignment \
+                   run-execution-orchestration \
+                   run-validation-analytics \
+                   generate-sbom \
+                   evaluate-policies \
+                   sign-and-attest \
+                   emit-trace-matrix \
+                   run-determinism-harness \
+                   run-mutation-suite \
+                   package-evidence-bundle \
+                   register-webhooks \
+                   embed-canaries \
+                   generate-runbook
 
 validate-inputs:
 	node -e "const fs=require('node:fs'); const cfg=JSON.parse(fs.readFileSync('pipeline/pipeline.config.json','utf8')); if (!cfg.pipeline || !cfg.pipeline.timeoutsMinutes) { process.exit(1); }"

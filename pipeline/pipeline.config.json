@@ -36,6 +36,7 @@
       "cosign": "v2.4.1",
       "ajvCli": "5.0.0"
     },
+    "runtimeVersionsConfigPath": "pipeline/runtime-versions.json",
     "evidenceRetentionDays": 2557,
     "determinismHarnessDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
     "mutationRunnerDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",

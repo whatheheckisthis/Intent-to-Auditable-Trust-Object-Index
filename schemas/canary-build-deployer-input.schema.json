@@ -1,0 +1,31 @@
+{
+  "# File": "schemas/canary-build-deployer-input.schema.json",
+  "# Role": "Schema for build deployer runtime input contract.",
+  "# Constraints enforced": "file-path secret inputs, git-ref binding, no additional properties",
+  "# Upstream": "ROOT",
+  "# Downstream": "embed-canaries",
+  "# ISM controls": "ISM-0109, ISM-0140, ISM-1554",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "thinkst_console_domain_path",
+    "thinkst_flock_api_key_path",
+    "provenance_path",
+    "output_path",
+    "pipeline_run_ref"
+  ],
+  "properties": {
+    "thinkst_console_domain_path": {
+      "type": "string",
+      "const": "/run/secrets/thinkst-console-domain"
+    },
+    "thinkst_flock_api_key_path": {
+      "type": "string",
+      "const": "/run/secrets/thinkst-flock-api-key"
+    },
+    "provenance_path": { "type": "string", "minLength": 1 },
+    "output_path": { "type": "string", "minLength": 1 },
+    "pipeline_run_ref": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+  }
+}

@@ -238,5 +238,10 @@
         ]
       }
     ]
-  }
+  },
+  "slsa_verifier_version": "2.6.0",
+  "slsa_generator_version": "v2.1.0",
+  "slsa_provenance_filename": "assurance-platform.intoto.jsonl",
+  "canary_build_placements_path": "canary/tracebit-build-placements.json",
+  "canary_build_deployer_input_path": "pipeline/canary-build-deployer-input.json"
 }

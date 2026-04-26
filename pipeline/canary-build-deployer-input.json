@@ -1,0 +1,14 @@
+{
+  "# File": "pipeline/canary-build-deployer-input.json",
+  "# Role": "Schema-bound input for Thinkst build canary deployer.",
+  "# Constraints enforced": "secret-file-path-only inputs, provenance path binding, git-SHA run reference",
+  "# Upstream": "slsa-provenance",
+  "# Downstream": "embed-canaries",
+  "# ISM controls": "ISM-0109, ISM-0140, ISM-1554",
+  "$schema": "../schemas/canary-build-deployer-input.schema.json",
+  "thinkst_console_domain_path": "/run/secrets/thinkst-console-domain",
+  "thinkst_flock_api_key_path": "/run/secrets/thinkst-flock-api-key",
+  "provenance_path": "pipeline/outputs/provenance/assurance-platform.intoto.jsonl",
+  "output_path": "pipeline/outputs/tracebit-build-deployment-log.json",
+  "pipeline_run_ref": "0000000000000000000000000000000000000000"
+}

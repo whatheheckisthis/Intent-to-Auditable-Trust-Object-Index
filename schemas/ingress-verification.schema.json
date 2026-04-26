@@ -1,0 +1,41 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "schemas/ingress-verification.schema.json",
+  "__role": "Schema for ingress digest verification outcomes at job start.",
+  "__constraints_enforced": [
+    "typed-ingress-status",
+    "digest-comparison-status-enum",
+    "no-additional-properties"
+  ],
+  "__upstream": "pipeline/verify-artefact-ingress.js",
+  "__downstream": "runtime-gate",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_id", "overall_status", "artefacts"],
+  "properties": {
+    "job_id": { "type": "string" },
+    "overall_status": {
+      "type": "string",
+      "enum": ["INGRESS_VERIFIED", "ARTEFACT_INTEGRITY_FAILURE"]
+    },
+    "artefacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "producing_job", "expected_digest", "actual_digest", "status"],
+        "properties": {
+          "path": { "type": "string" },
+          "producing_job": { "type": "string" },
+          "expected_digest": { "type": "string" },
+          "actual_digest": { "type": ["string", "null"] },
+          "status": {
+            "type": "string",
+            "enum": ["DIGEST_MATCH", "DIGEST_MISMATCH", "FILE_NOT_FOUND"]
+          }
+        }
+      }
+    }
+  }
+}

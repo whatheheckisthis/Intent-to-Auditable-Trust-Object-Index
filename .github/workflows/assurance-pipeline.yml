@@ -30,6 +30,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Runtime consistency gate
+        uses: ./.github/actions/runtime-gate
+        with:
+          job-id: validate-inputs
+          pipeline-run-ref: ${{ github.sha }}
       - name: Validate schemas and pipeline config
         id: read-config
         run: |
@@ -99,6 +104,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Runtime consistency gate
+        uses: ./.github/actions/runtime-gate
+        with:
+          job-id: build-containers
+          pipeline-run-ref: ${{ github.sha }}
       - name: Build deterministic Podman images
         run: |
           set -euo pipefail
@@ -226,6 +236,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Runtime consistency gate
+        uses: ./.github/actions/runtime-gate
+        with:
+          job-id: generate-sbom
+          pipeline-run-ref: ${{ github.sha }}
       - name: Run generate-sbom target
         run: |
           set -euo pipefail
@@ -239,6 +254,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Runtime consistency gate
+        uses: ./.github/actions/runtime-gate
+        with:
+          job-id: evaluate-policies
+          pipeline-run-ref: ${{ github.sha }}
       - name: Install Conftest
         run: |
           set -euo pipefail

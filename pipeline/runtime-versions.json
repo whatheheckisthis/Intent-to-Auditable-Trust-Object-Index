@@ -1,0 +1,52 @@
+{
+  "# CONSTRAINT TRADE-OFF": "JSON has no native comment syntax, so required file metadata is encoded as reserved metadata fields.",
+  "__file": "pipeline/runtime-versions.json",
+  "__role": "Declared runtime tool and environment constants for deterministic runner verification.",
+  "__constraints_enforced": [
+    "declared-version-constants",
+    "blocked-env-var-enforcement",
+    "allowed-env-var-enumeration"
+  ],
+  "__upstream": "ROOT",
+  "__downstream": "runtime-gate",
+  "$schema": "../schemas/runtime-versions.schema.json",
+  "runtime_versions": {
+    "node": "22.0.0",
+    "npm": "10.0.0",
+    "podman": "5.0.0",
+    "conftest": "0.56.0",
+    "cosign": "2.4.1",
+    "slsa_verifier": "2.6.0",
+    "syft": "1.4.0",
+    "ajv_cli": "5.0.0",
+    "jq": "1.7.1",
+    "sha256sum": "8.32",
+    "base64": "8.32"
+  },
+  "node_engine": ">=22.0.0 <23.0.0",
+  "npm_engine": ">=10.0.0 <11.0.0",
+  "blocked_env_vars": [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AZURE_CLIENT_SECRET",
+    "NODE_OPTIONS",
+    "NPM_CONFIG_REGISTRY",
+    "NPM_TOKEN",
+    "GITHUB_TOKEN"
+  ],
+  "allowed_env_vars": [
+    "PATH",
+    "HOME",
+    "USER",
+    "SHELL",
+    "LANG",
+    "CI",
+    "GITHUB_ACTIONS",
+    "GITHUB_WORKSPACE",
+    "GITHUB_SHA",
+    "GITHUB_REF",
+    "GITHUB_REPOSITORY",
+    "GITHUB_RUN_ID",
+    "GITHUB_RUN_ATTEMPT"
+  ]
+}

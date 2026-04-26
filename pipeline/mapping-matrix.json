@@ -245,6 +245,58 @@
       "pipeline_stage": "embed-canaries",
       "attestation_type": "tracebit-build-deployment-log-v1",
       "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-RUNTIME-01",
+      "control_description": "Runner tool versions verified against declared constants before any pipeline stage executes",
+      "framework_refs": [
+        "ISM-0407",
+        "ISM-1491",
+        "E8-ML3-APP-3"
+      ],
+      "evidence_artefact": "pipeline/outputs/runtime-verification.json",
+      "pipeline_stage": "runtime-gate",
+      "attestation_type": "runtime-verification-v1",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-RUNTIME-02",
+      "control_description": "Cross-job artefact ingress verified by SHA-256 digest before downstream processing",
+      "framework_refs": [
+        "ISM-0149",
+        "ISM-1753",
+        "E8-ML3-PATCH-1",
+        "SOC2-CC8.1"
+      ],
+      "evidence_artefact": "pipeline/outputs/ingress-verification-*.json",
+      "pipeline_stage": "runtime-gate",
+      "attestation_type": "ingress-verification-v1",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-RUNTIME-03",
+      "control_description": "All pipeline failures emit structured records mapped to ISM controls before exit",
+      "framework_refs": [
+        "ISM-0109",
+        "ISM-1554",
+        "SOC2-CC7.2"
+      ],
+      "evidence_artefact": "pipeline/outputs/failures/*.json",
+      "pipeline_stage": "all",
+      "attestation_type": "failure-record-v1",
+      "coverage_status": "COVERED"
+    },
+    {
+      "control_id": "CTRL-RUNTIME-04",
+      "control_description": "Local Makefile execution verified to produce byte-for-byte identical outputs to CI",
+      "framework_refs": [
+        "ISM-0407",
+        "E8-ML3-APP-2"
+      ],
+      "evidence_artefact": "pipeline/outputs/parity-verification.json",
+      "pipeline_stage": "verify-parity",
+      "attestation_type": "parity-verification-v1",
+      "coverage_status": "COVERED"
     }
   ]
 }

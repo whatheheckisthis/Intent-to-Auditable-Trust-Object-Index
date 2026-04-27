@@ -1,11 +1,12 @@
 // File: pipeline/emit-failure.js
-// Role: Structured failure record emitter called before non-zero stage exit.
-// Constraints enforced: schema validation before write, append-only failure output, fire-and-forget webhook dispatch, no eval/exec.
-// Upstream: any pipeline stage error handler
+// Role: Structured failure/success record emitter called by pipeline stages.
+// Constraints enforced: schema validation before write, append-only output, no eval/exec.
+// Upstream: any pipeline stage handler
 // Downstream: package-evidence-bundle
 // ISM controls: ISM-0109, ISM-1554
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { parseArgs } from 'node:util';
 import Ajv2020 from 'ajv/dist/2020.js';
 
 const DEFAULT_ISM_MAP = Object.freeze({
@@ -33,17 +34,6 @@ function generateFailureId(stage, type, runRef) {
   return `FAIL-${createHash('sha256').update(`${stage}:${type}:${runRef}`).digest('hex').slice(0, 8).toUpperCase()}`;
 }
 
-function parseArgs(argv) {
-  const args = { type: 'PIPELINE_STAGE_FAILURE', stage: 'unknown-stage', runRef: 'unknown-run' };
-  for (let i = 2; i < argv.length; i += 1) {
-    if (argv[i] === '--type') args.type = argv[i + 1];
-    if (argv[i] === '--stage') args.stage = argv[i + 1];
-    if (argv[i] === '--run-ref') args.runRef = argv[i + 1];
-    if (argv[i] === '--message') args.message = argv[i + 1];
-  }
-  return args;
-}
-
 export async function emitFailure(partialRecord) {
   const record = {
     failure_id: generateFailureId(partialRecord.pipeline_stage, partialRecord.failure_type, partialRecord.pipeline_run_ref),
@@ -54,20 +44,17 @@ export async function emitFailure(partialRecord) {
   const schema = sanitizeSchema(JSON.parse(readFileSync('schemas/failure-record.schema.json', 'utf8')));
   const validate = ajv.compile(schema);
 
+  mkdirSync('pipeline/outputs/failures', { recursive: true });
+
   if (!validate(record)) {
-    mkdirSync('pipeline/outputs/failures', { recursive: true });
     writeFileSync(
       `pipeline/outputs/failures/FAIL-INVALID-${Date.now()}.json`,
       `${JSON.stringify({ raw: partialRecord, validation_errors: validate.errors }, null, 2)}\n`,
       'utf8'
     );
-    // # CONSTRAINT TRADE-OFF:
-    // Date.now() is used only as a fallback filename suffix for schema-invalid failure payloads.
-    // It does not influence control flow, decision logic, or deterministic artefact content.
     return record;
   }
 
-  mkdirSync('pipeline/outputs/failures', { recursive: true });
   const path = `pipeline/outputs/failures/${record.failure_id}.json`;
   writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
 
@@ -88,23 +75,55 @@ export async function emitFailure(partialRecord) {
   return record;
 }
 
+function parseCli() {
+  const { values } = parseArgs({
+    options: {
+      type: { type: 'string', default: 'PIPELINE_STAGE_FAILURE' },
+      stage: { type: 'string', default: 'unknown-stage' },
+      'run-ref': { type: 'string', default: 'unknown-run' },
+      message: { type: 'string', default: '' },
+      component: { type: 'string', default: '' },
+      'from-job-status': { type: 'string' }
+    },
+    strict: true
+  });
+  return values;
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const args = parseArgs(process.argv);
+  const values = parseCli();
+  const status = values['from-job-status'];
+
+  if (status === 'success') {
+    const successRecord = {
+      stage: values.stage,
+      pipeline_run_ref: values['run-ref'],
+      overall_status: 'STAGE_SUCCESS'
+    };
+    mkdirSync('pipeline/outputs/failures', { recursive: true });
+    writeFileSync(
+      `pipeline/outputs/failures/${values.stage}-success.json`,
+      `${JSON.stringify(successRecord, null, 2)}\n`,
+      'utf8'
+    );
+    process.exit(0);
+  }
+
   emitFailure({
-    failure_type: args.type,
-    pipeline_stage: args.stage,
-    pipeline_run_ref: args.runRef,
-    severity: 'HIGH',
-    ism_controls: DEFAULT_ISM_MAP[args.type] ?? ['ISM-0109'],
+    failure_type: values.type,
+    pipeline_stage: values.stage,
+    pipeline_run_ref: values['run-ref'],
+    severity: status === 'cancelled' ? 'HIGH' : 'CRITICAL',
+    ism_controls: DEFAULT_ISM_MAP[values.type] ?? ['ISM-0109', 'ISM-1554'],
     detail: {
-      message: args.message ?? `${args.type} detected in ${args.stage}`,
-      affected_component: args.stage,
+      message: values.message || `Job ${values.stage} exited with status: ${status || 'failure'}`,
+      affected_component: values.component || values.stage,
       expected_value: null,
       actual_value: null,
       artefact_path: 'pipeline/outputs/'
     },
-    remediation: 'Review structured failure detail and rerun stage after fixing root cause.'
-  }).catch((error) => {
+    remediation: `Inspect pipeline/outputs/failures/ for structured records from ${values.stage}`
+  }).then(() => process.exit(0)).catch((error) => {
     process.stderr.write(`${error.message}\n`);
     process.exit(1);
   });

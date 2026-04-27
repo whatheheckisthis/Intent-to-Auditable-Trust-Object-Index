@@ -244,5 +244,18 @@
   "slsa_generator_version": "v2.1.0",
   "slsa_provenance_filename": "assurance-platform.intoto.jsonl",
   "canary_build_placements_path": "canary/tracebit-build-placements.json",
-  "canary_build_deployer_input_path": "pipeline/canary-build-deployer-input.json"
+  "canary_build_deployer_input_path": "pipeline/canary-build-deployer-input.json",
+  "toolchain": {
+    "target_architecture": "oci",
+    "version": "5.0.0",
+    "artefact_name": "iato-build-oci.tar"
+  },
+  "image_digests": {
+    "build": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "sbom_generator": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "determinism_harness": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "tool_digests": {
+    "conftest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
 }

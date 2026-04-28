@@ -584,163 +584,595 @@ This is not a secondary goal. It is the primary design constraint of the evidenc
 An evidence bundle that requires author explanation to interpret is an incomplete evidence
 bundle.
 
+# IĀTŌ — Quick Start
+
+<!--
+Path    : QUICKSTART.md
+Purpose : Operator entry point — prerequisites, local execution, verification, CI reference
+Layer   : operational
+Governs : all repositories subordinate to the IĀTŌ assurance programme
+-->
+
+> This document is the operator entry point for the IĀTŌ assurance programme.
+> It covers local execution, output verification, CI pipeline structure, and the
+> failure model. It does not cover programme governance or architectural design —
+> those are defined in the [programme index](README.md).
+
 ---
+
+## Prerequisites
+
+The following tools must be present and version-verified before any IĀTŌ command
+is executed. The runtime gate (`pipeline/verify-runtime.js`) checks all of these
+at pipeline initialisation and halts with a structured `RUNNER_VERSION_MISMATCH`
+record if any version does not meet the declared minimum.
+
+| Tool | Minimum version | Role |
+|:---|:---|:---|
+| Node.js | 22.0.0 | Orchestration runtime |
+| npm | 10.0.0 | Dependency management |
+| Podman | 5.0.0 | Rootless container execution |
+| cosign | 2.4.1 | Keyless artefact attestation |
+| slsa-verifier | 2.6.0 | Provenance verification |
+| jq | 1.7.1 | Evidence bundle inspection |
+| sha256sum | 8.32 | Digest computation |
+| make | 4.3 | Local pipeline execution |
+| conftest | 0.56.0 | OPA policy evaluation |
+
+Declared versions are the source of truth in `pipeline/runtime-versions.json`.
+If the tool present on the system does not meet the minimum, do not proceed.
+Upgrade the tool — do not lower the declared minimum.
+
+
+>Docker is not supported. IĀTŌ uses Podman in rootless mode
+exclusively. All container invocations use `--read-only`, `--network=none`, and
+`--env-host=false`. These flags are enforced by `policies/podman-runtime.rego`
+and are not optional.
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/<org>/iato.git
+cd iato
+npm ci --ignore-scripts
+```
+
+`npm ci` is used in place of `npm install`. It installs from `package-lock.json`
+exactly — no resolution, no version range expansion. `--ignore-scripts` prevents
+any `postinstall` script from executing during dependency installation.
+
+After installation, verify the runtime environment:
+
+```bash
+node pipeline/verify-runtime.js \
+  --config pipeline/runtime-versions.json \
+  --output pipeline/outputs/runtime-verification.json \
+  --job-id local
+```
+
+Inspect the result:
+
+```bash
+jq '.overall_status' pipeline/outputs/runtime-verification.json
+```
+
+Expected output: `"RUNTIME_CONSISTENT"`. Any other value means a tool version or
+ENV contamination check failed. Inspect `pipeline/outputs/runtime-verification.json`
+for the specific finding before proceeding.
+
+---
+
+## Local Execution
+
+### Full Pipeline
+
+```bash
+make run-full-pipeline
+```
+
+This executes the complete DAG in the order declared by the Makefile. Each stage is
+a prerequisite of the next. A stage failure halts the pipeline at that point and
+writes a structured failure record to `pipeline/outputs/failures/` before exiting.
+
+The pipeline executes these stages in sequence:
+
+```
+verify-runtime
+  └── validate-inputs
+        └── build-containers
+              └── run-governance-policy
+                    └── run-cross-framework-alignment
+                          └── run-execution-orchestration
+                                └── run-validation-analytics
+                                      └── generate-sbom
+                                            └── evaluate-policies
+                                                  └── sign-and-attest
+                                                        └── emit-trace-matrix
+                                                              └── run-determinism-harness
+                                                                    └── run-mutation-suite
+                                                                          └── package-evidence-bundle
+                                                                                └── register-webhooks
+                                                                                      └── embed-canaries
+                                                                                            └── generate-runbook ← TERMINAL
+```
+
+No stage executes until all its declared upstream dependencies have completed
+successfully. There is no `--force` flag. There is no way to skip a stage.
+
+### Individual Stages
+
+Each Makefile target can be invoked independently, but only after its upstream
+dependencies have already completed and their output artefacts are present in
+`pipeline/outputs/`. Invoking a target without its upstream artefacts present
+will fail at the ingress digest verification step.
+
+```bash
+make evaluate-policies    # requires: generate-sbom outputs present
+make run-mutation-suite   # requires: run-determinism-harness outputs present
+make package-evidence-bundle  # requires: run-mutation-suite outputs present
+```
+
+### Parity Check
+
+Local execution must produce byte-for-byte identical outputs to CI for identical
+inputs. After a verified CI pass, the parity baseline is committed to
+`pipeline/parity-baseline.json`. To verify local/CI parity:
+
+```bash
+make verify-parity
+```
+
+A `LOCAL_CI_PARITY_FAILURE` result means local outputs diverge from the committed
+baseline. This is a runtime consistency failure. Inspect
+`pipeline/outputs/parity-verification.json` to identify which artefact diverged
+and at which stage.
+
+---
+
+## Output Verification
+
+All outputs are written to `evidence/`. The evidence bundle is self-contained and
+auditor-operable without repository access. Verification requires only
+`cosign`, `sha256sum`, and `jq`.
+
+```bash
+./evidence/verify-bundle.sh
+```
+
+`verify-bundle.sh` reads all verification parameters from `evidence/bundle-manifest.json`
+using `jq`. It performs the following checks in sequence:
+
+1. SHA-256 digest of every declared artefact against the manifest
+2. Ed25519 signature verification via `cosign verify-blob`
+3. Rekor transparency log entry confirmation
+4. SLSA provenance verification via `slsa-verifier`
+
+The script exits 0 on full verification. It exits 1 on any digest mismatch,
+signature failure, or missing artefact, and prints a structured `[FAIL]` line
+identifying the specific artefact and the check that failed.
+
+### Evidence Bundle Structure
+
+```
+evidence/
+├── bundle-manifest.json        # SHA-256 bound · Ed25519 signed · Rekor attested
+├── verify-bundle.sh            # Auditor-operable verification script
+├── provenance.intoto.jsonl     # SLSA Build Level 3 provenance (DSSE-wrapped)
+├── sbom-cyclonedx.json         # CycloneDX 1.6 SBOM · all-layers scan
+├── coverage-table.md           # Control coverage · ISM · E8 ML3 · SOC 2
+└── [run-specific artefacts]    # Mutation report · determinism result · runbook
+```
+
+Every artefact in `evidence/` carries:
+
+| Field | Value |
+|:---|:---|
+| `sha256_digest` | `sha256:[0-9a-f]{64}` — computed at bundle assembly, verified at ingress |
+| `ed25519_signature` | Base64url-encoded · key injected at initialisation |
+| `cosign_attestation` | Keyless · GitHub OIDC identity · no long-lived private keys |
+| `rekor_log_index` | Sigstore public-good instance · tamper-evident timestamp |
+| `slsa_provenance_ref` | Path to `provenance.intoto.jsonl` · SLSA Build Level 3 |
+| `pipeline_run_ref` | Git commit SHA · not a clock read |
+| `producing_stage` | Pipeline stage name · traceable to DAG declaration |
+| `framework_controls` | ISM · E8 ML3 · SOC 2 control IDs satisfied by this artefact |
+
+Verification requires no repository access, no cloud credentials, and no contact
+with the authors. The bundle is designed for a party that does not trust the authors.
+
+---
+
+## CI Pipeline
+
+Defined in `.github/workflows/assurance-pipeline.yml`.
+
+All stages are fail-fast and schema-gated. Every stage runs inside a pinned
+Podman container with `--read-only`, `--network=none`, and `--env-host=false`.
+Every stage emits a structured exit record via `pipeline/emit-failure.js` in an
+`always()` step — success and failure alike.
+
+| Stage | Tool / Action | Output artefact | Gate |
+|:---|:---|:---|:---|
+| 1. Runtime gate | `verify-runtime.js` | `runtime-verification.json` | Version + ENV check |
+| 2. Policy evaluation | Conftest · `podman-runtime.rego` | `policy-eval.json` | Zero violations |
+| 3. Schema validation | AJV · `schemas/` | (halt on violation) | Fail-fast |
+| 4. SBOM generation | Syft · CycloneDX 1.6 | `sbom-cyclonedx.json` | Schema-valid |
+| 5. Container build | Podman · pinned digest | OCI image | Digest-verified |
+| 6. Mutation testing | `mutation-runner.js` | `mutation-report.json` | `escaped: 0` |
+| 7. Determinism harness | `harness.js` | `determinism-result.json` | `DETERMINISM_PASS` |
+| 8. Evidence generation | `package-evidence-bundle.js` | `bundle-manifest.json` | All artefacts present |
+| 9. SLSA provenance | SLSA Generic Generator `v2.1.0` | `provenance.intoto.jsonl` | Isolated VM |
+| 10. Keyless signing | Cosign · GitHub OIDC | `*.sig` · `*.pem` | Rekor entry confirmed |
+| 11. Provenance verification | `slsa-verifier` | (halt on mismatch) | Digest match |
+| 12. Canary deployment | Thinkst API · `tracebit-build-deployer.js` | `tracebit-build-deployment-log.json` | All tokens deployed |
+| 13. Control coverage | `generate-coverage-table.js` | `coverage-table.md` | Schema-valid |
+| 14. Runbook generation | `generate-runbook.js` | `runbook.json` · `runbook.md` | DAG-derived |
+
+No stage is optional. No stage can be bypassed by pipeline configuration.
+
+---
+
+## Execution
+
+IĀTŌ runs as a Kubernetes `Job`, not a `Deployment` or `Service`. It is a
+batch execution with a defined terminal state, not a long-running workload.
+
+```bash
+kubectl apply -f deploy/job.yaml
+```
+
+The Job specification declares:
+
+- `restartPolicy: Never` — a failed execution is a failed job, not a retried one
+- `backoffLimit: 0` — no automatic retry; a failure requires operator investigation
+- resource limits sourced from `deploy/job.yaml` constants — not from runtime negotiation
+- no `env:` fields in the container spec — all configuration via `configMap` volume
+  mounts bound to schema-validated JSON files
+
+To inspect Job output:
+
+```bash
+kubectl logs job/iato-pipeline --follow
+kubectl get job iato-pipeline -o json \
+  | jq '.status'
+```
+
+A Job that exits with a non-zero code will have written structured failure records
+to its output volume before terminating. Retrieve them from the declared output
+volume mount path before the Job pod is cleaned up.
+
+OPA policy admission (optional): if the cluster runs OPA Gatekeeper or Kyverno,
+`policies/podman-runtime.rego` can be adapted as a `ConstraintTemplate` to enforce
+the same runtime constraints at the Kubernetes admission layer. This is a cluster
+configuration step and is not automated by the IĀTŌ pipeline.
+
+---
+
+## Failure Model
+
+Every failure emits a structured record before exiting. There are no implicit failure
+states, no partial success conditions, and no silent exits.
+
+```json
+{
+  "failure_id":       "FAIL-A3F2C1B0",
+  "failure_type":     "SCHEMA_VALIDATION_FAILURE",
+  "pipeline_stage":   "validate-inputs",
+  "pipeline_run_ref": "a1b2c3d4e5f6...",
+  "severity":         "CRITICAL",
+  "ism_controls":     ["ISM-0407"],
+  "detail": {
+    "message":            "Required field 'artefact_digest' missing from s-in input",
+    "affected_component": "schemas/s-in.schema.json",
+    "expected_value":     "string matching ^sha256:[0-9a-f]{64}$",
+    "actual_value":       null
+  },
+  "remediation": "Supply a valid SHA-256 digest in the s-in input payload"
+}
+```
+
+Failure records are written to `pipeline/outputs/failures/` and are included in
+the evidence bundle. They are schema-validated before being written — a failure
+record that is itself malformed falls back to a raw JSON file with a timestamp suffix,
+which is the only clock read permitted in the platform.
+
+Typed failure codes:
+
+| Code | Stage | Meaning |
+|:---|:---|:---|
+| `RUNNER_VERSION_MISMATCH` | runtime-gate | Tool version below declared minimum |
+| `ENV_CONTAMINATION` | runtime-gate | Blocked environment variable present |
+| `ARTEFACT_INTEGRITY_FAILURE` | any ingress step | Downloaded artefact digest does not match producing job |
+| `SCHEMA_VALIDATION_FAILURE` | any boundary | Input fails schema validation |
+| `DETERMINISM_FAILURE` | run-determinism-harness | Two runs with identical inputs produced different outputs |
+| `MUTATION_ESCAPE` | run-mutation-suite | Schema validator accepted an invalid input |
+| `POLICY_VIOLATION` | evaluate-policies | OPA/Conftest found a constraint violation |
+| `CANARY_DEPLOYMENT_INCOMPLETE` | embed-canaries | One or more token placements failed |
+| `SLSA_VERIFICATION_FAILURE` | verify-provenance | `slsa-verifier` rejected the provenance document |
+| `RUNTIME_INCONSISTENT` | runtime-gate | Runtime verification found version or ENV failure |
+| `PIPELINE_STAGE_FAILURE` | any stage | Generic stage failure with detail in record |
+
+No failure code is recoverable by retrying the same stage with the same inputs.
+If inputs are unchanged, the same failure will recur. Fix the cause; do not retry
+the symptom.
 
 ## 9. Codex / Agent Prompt Surface
 
 This section defines the rules for any machine agent operating on this repository.
 Non-compliance with these rules constitutes a generation failure regardless of the
-quality of other output.
+quality of other output. These rules are not guidelines. They are constraints with
+the same standing as the execution constraints defined in Section 4.
 
-### Fundamental Operating Rules
+---
 
-**Rule 1 — Path-based reasoning only.** Every claim about system state must reference
-a specific file path, schema field, or pipeline stage. Assertions not grounded in a
-declared artefact are prohibited. There is no implicit knowledge about this system.
+### 9.1 Fundamental Operating Rules
 
-**Rule 2 — Schema before implementation.** Before generating any file, the agent must
-identify the schema that governs it. If no schema exists, the agent must generate the
-schema first and validate the implementation against it. Implementation without schema
-is a constraint violation.
+**Rule 1 — Path-based reasoning only.**
+Every claim about system state must reference a specific file path, schema field, or
+pipeline stage declared in the repository index (Section 6). Assertions not grounded
+in a declared artefact are prohibited. There is no implicit knowledge about this system.
+If a path is not in the repository index, it does not exist for 
+generation.
 
-**Rule 3 — No inference.** The agent must not infer the content of undeclared files,
-the behaviour of undeclared stages, or the meaning of undeclared fields. If a required
-artefact is absent, the agent must declare it absent and halt — not fill the gap with
-a plausible value.
+**Rule 2 — Schema before implementation.**
+Before generating any file, the agent must identify the schema in `schemas/` that
+governs it. If no schema exists, the agent must generate the schema first, validate
+it for consistency with all adjacent schemas, and confirm it introduces no
+`additionalProperties` violations before proceeding to implementation. Implementation
+without a governing schema is a constraint violation equivalent to `eval()` — it
+introduces unverifiable behaviour.
 
-**Rule 4 — Constraint inheritance.** Every generated file inherits all constraints from
-all prior iterations of this prompt series. Constraints are additive and non-revocable.
-A later prompt cannot remove a constraint imposed by an earlier prompt.
+**Rule 3 — No inference.**
+The agent must not infer the content of undeclared files, the behaviour of undeclared
+stages, or the meaning of undeclared fields. If a required artefact is absent, the
+agent must declare it absent and halt. Filling a gap with a plausible value is a
+zero-inference violation. The gap must be named, and the agent must wait for an
+explicit declaration before proceeding.
 
-**Rule 5 — Fail-fast, structured.** Every failure path must emit a structured record
-conforming to `schemas/failure-record.schema.json` before exiting non-zero. A raw
-`exit 1` without a structured record is a generation failure.
+**Rule 4 — Constraint inheritance.**
+Every generated file inherits all constraints from all prior iterations of this prompt
+series. Constraints are additive and non-revocable. A later prompt cannot remove a
+constraint imposed by an earlier prompt. The constraint set grows; it does not shrink.
+If a new requirement appears to conflict with a prior constraint, the agent must declare
+the conflict in a `# CONSTRAINT TRADE-OFF` block and halt — it must not silently
+resolve the conflict in favour of the new requirement.
 
-**Rule 6 — No clock reads.** No generated file may call `Date.now()`, `datetime.now()`,
-`time.time()`, or equivalent within any logic path. The one documented exception
-(`emit-failure.js` fallback filename) is a named trade-off, not a template.
+**Rule 5 — Fail-fast, structured.**
+Every failure path must emit a structured record conforming to
+`schemas/failure-record.schema.json` before exiting non-zero. A raw `exit 1` without
+a structured record is a generation failure. The failure record is not optional when
+the pipeline is under time pressure or when the failure is considered obvious. It is
+mandatory unconditionally.
 
-**Rule 7 — ENV := ∅.** No generated file may read from `process.env`, `os.environ`,
-or equivalent within any logic path. Configuration arrives via schema-bound file mounts
-declared in `pipeline/pipeline.config.json`.
+**Rule 6 — No clock reads.**
+No generated file may call `Date.now()`, `datetime.now()`, `time.time()`, `$(date)`,
+or any equivalent within any logic path. The one documented exception is the fallback
+filename in `pipeline/emit-failure.js` for the degenerate case where the failure
+record itself is schema-invalid. That exception is a named trade-off in a specific
+file. It is not a template and must not be reproduced in any other context.
 
-**Rule 8 — DAG topology.** All pipeline stages must form a strictly directed acyclic
-graph. Every stage must declare its upstream dependency. No stage may write to the
-input scope of a prior stage. Back-edges are constraint violations.
+**Rule 7 — ENV := ∅.**
+No generated file may read from `process.env`, `os.environ`, `System.getenv()`, or
+any equivalent within any logic path. Configuration arrives exclusively via
+schema-bound file mounts declared in `pipeline/pipeline.config.json`. Any generated
+file that requires a secret or a credential must receive it as a file path declared
+in the schema-bound input — not as an environment variable.
 
-### Step-by-Step Agent Reasoning Workflow
+**Rule 8 — DAG topology.**
+All pipeline stages must form a strictly directed acyclic graph. Every stage must
+declare its upstream dependency. No stage may write to the input scope of a prior
+stage. Back-edges are constraint violations. A stage that is added without a declared
+upstream is assumed to have no dependency — this assumption must be made explicit,
+not left implicit.
+
+**Rule 9 — One token per location.**
+When generating Canary Token placement manifests, no two entries may share the same
+`placement_target`. The schema enforces uniqueness; the agent must also check this
+before emitting a manifest. A token that fires must be unambiguously attributable to
+a single placement target.
+
+**Rule 10 — Mapping matrix is always updated.**
+Every generated file that satisfies an ISM, E8, or SOC 2 control must be accompanied
+by a diff to `pipeline/mapping-matrix.json`. The diff must declare `coverage_status`
+as either `COVERED` (live pipeline-executed) or `COVERAGE_STRUCTURAL_ONLY` (schema-valid
+shape, live evaluation requires infrastructure external to the pipeline). Omitting the
+mapping matrix update is a generation failure equivalent to producing evidence with no
+declared control reference.
+
+---
+
+### 9.2 Step-by-Step Agent Reasoning Workflow
 
 When given a task involving this repository, execute the following steps in order.
-Do not skip steps. Do not reorder steps.
+Do not skip steps. Do not reorder steps. Each step is a gate — if a step cannot be
+completed, halt and declare why before proceeding.
 
 ```
 Step 1 — Identify the target file or stage.
-          What is the canonical path of the artefact to be generated or modified?
+          State the canonical path of the artefact to be generated or modified.
+          Confirm the path exists in the repository index (Section 6).
+          If it does not exist in the index: halt.
+          Do not generate a file at a path not declared in the index without first
+          declaring the addition and justifying it against the constraint set.
 
 Step 2 — Identify the governing schema.
-          What schema in schemas/ governs this artefact?
-          If none exists: generate the schema first (go to Step 2a).
-          Step 2a — Generate schema. Validate it is consistent with all adjacent schemas.
-                    Confirm it introduces no additionalProperties violations.
+          State which file in schemas/ governs this artefact.
+          If no schema governs it: generate the schema first (Step 2a).
+          Do not proceed to Step 3 until the schema exists and is validated.
+
+          Step 2a — Generate schema.
+                    Validate consistency with all adjacent schemas.
+                    Confirm no additionalProperties violations.
+                    Confirm all required fields are declared.
+                    Confirm all enum values are exhaustive.
+                    Update the repository index with the new schema path.
 
 Step 3 — Identify upstream dependencies.
-          What stage or artefact must exist before this file can be generated?
-          Are those artefacts present? If not: halt and declare what is absent.
+          State which stage or artefact must exist before this file can be generated.
+          Confirm those artefacts are present in pipeline/outputs/ or are produced
+          by a prior stage in the declared DAG.
+          If any upstream artefact is absent: halt and declare what is missing.
 
 Step 4 — Identify downstream consumers.
-          What stage or artefact receives the output of this file?
-          Does the output schema match the consumer's input schema?
+          State which stage or artefact receives the output of this file.
+          Confirm the output schema of this file matches the input schema of the
+          downstream consumer.
+          If schemas are incompatible: declare the mismatch and halt.
 
 Step 5 — Identify constraint surface.
-          Which of the following constraints apply to this file?
-          [ ] Δt = 0  [ ] ENV := ∅  [ ] No eval/exec  [ ] DAG  [ ] Fail-fast
-          [ ] Schema-validated ingress  [ ] Structured failure record on exit 1
+          For each constraint below, state whether it applies to this file and how
+          it is enforced in the generated code:
+
+          [ ] Δt = 0         — no clock reads in any logic path
+          [ ] ENV := ∅       — no process.env or os.environ reads
+          [ ] No eval/exec   — no dynamic dispatch or reflection
+          [ ] DAG            — upstream declared, no back-edges
+          [ ] Fail-fast      — validation failure halts immediately, no coercion
+          [ ] Schema ingress — all inputs validated at boundary before use
+          [ ] Structured failure record — exit 1 always preceded by emit-failure.js
 
 Step 6 — Identify ISM control mapping.
-          Which ISM, E8, or SOC 2 controls does this file satisfy?
-          Does pipeline/mapping-matrix.json need updating?
+          State which ISM, E8, or SOC 2 controls this file satisfies.
+          State which entry in pipeline/mapping-matrix.json covers this file.
+          If no entry exists: generate the mapping matrix diff (Step 10 prerequisite).
 
 Step 7 — Generate the file.
           Apply all constraints identified in Steps 1–6.
-          Every claim must be traceable to a schema field or pipeline stage.
+          Every claim in the generated file must be traceable to a schema field
+          or a pipeline stage declared in the repository index.
+          Do not introduce any field, variable, or code path not derivable from
+          the declared schema.
 
 Step 8 — Generate the comment block.
-          Every file must be prefaced with:
-          # File: <canonical path>
-          # Role: <one sentence>
-          # Constraints enforced: <comma-separated>
-          # Upstream: <stage or ROOT>
-          # Downstream: <stage or TERMINAL>
-          # ISM controls: <comma-separated>
+          Prepend every generated file with the following block in the file's
+          native comment syntax:
+
+          # File: <canonical path from repository index>
+          # Role: <one sentence — what this file does in the pipeline>
+          # Constraints enforced: <comma-separated list from Step 5>
+          # Upstream: <stage name or ROOT>
+          # Downstream: <stage name or TERMINAL>
+          # ISM controls: <comma-separated control IDs from Step 6>
 
 Step 9 — Declare trade-offs.
-          If any constraint was relaxed: emit a # CONSTRAINT TRADE-OFF block
-          naming the constraint, the rationale, and the boundary condition.
+          If any constraint from Step 5 was relaxed or could not be fully enforced:
+          emit a # CONSTRAINT TRADE-OFF block immediately before the affected code.
+          The block must name: the constraint relaxed, the rationale, and the
+          boundary condition that contains the relaxation.
+          A trade-off that is not declared is a transparency violation.
 
 Step 10 — Update mapping matrix.
-           Emit a diff to pipeline/mapping-matrix.json declaring the new or updated
-           control coverage entry. coverage_status must be COVERED or
-           COVERAGE_STRUCTURAL_ONLY with a gap_note. Never omit this step.
+           Emit a diff to pipeline/mapping-matrix.json.
+           The diff must include all fields required by schemas/mapping-matrix.schema.json:
+           control_id, control_description, framework_refs, evidence_artefact,
+           pipeline_stage, attestation_type, coverage_status.
+           coverage_status must be COVERED or COVERAGE_STRUCTURAL_ONLY.
+           If COVERAGE_STRUCTURAL_ONLY: include gap_note explaining what infrastructure
+           is required to promote it to COVERED.
+           This step is never optional.
 ```
 
-### Prohibited Agent Behaviours
+---
 
-| Behaviour | Reason |
-|:---|:---|
-| Generating a file without a governing schema | Schema primacy violation |
-| Inferring a field value not declared in schema | Zero-inference violation |
-| Using `shell: true` in any subprocess call | ENV := ∅ violation |
-| Using `eval()`, `exec()`, or dynamic `import()` | Zero-inference violation |
-| Reading from `process.env` in logic paths | ENV := ∅ violation |
-| Emitting `exit 1` without a structured failure record | Fail-fast protocol violation |
-| Creating a back-edge in the pipeline DAG | DAG topology violation |
-| Referencing a file that is not in the repository index | Path-based reasoning violation |
-| Promoting `COVERAGE_STRUCTURAL_ONLY` to `COVERED` without live evaluation | Audit integrity violation |
-| Suppressing a `# CONSTRAINT TRADE-OFF` | Transparency violation |
+### 9.3 Prohibited Agent Behaviours
+
+The following behaviours constitute generation failures. A generation failure means
+the output is invalid regardless of its other properties. The agent must discard the
+output and restart from Step 1 of the reasoning workflow.
+
+| Behaviour | Constraint violated | Correct action |
+|:---|:---|:---|
+| Generating a file without a governing schema | Rule 2 — Schema primacy | Generate schema first · proceed to implementation only after schema is validated |
+| Inferring a field value not declared in schema | Rule 3 — No inference | Declare the field absent · halt · request explicit declaration |
+| Using `shell: true` in any subprocess call | Rule 7 — ENV := ∅ | Use `shell: false` with explicit `env` object (null-prototype) |
+| Using `eval()`, `exec()`, or dynamic `import()` | Rule 3 — No inference | Restructure to static dispatch · declare trade-off if impossible |
+| Spreading `process.env` into subprocess environment | Rule 7 — ENV := ∅ | Construct `env` as `Object.create(null)` with explicit `PATH` only |
+| Emitting `exit 1` without a structured failure record | Rule 5 — Fail-fast | Call `pipeline/emit-failure.js` before any non-zero exit |
+| Creating a back-edge in the pipeline DAG | Rule 8 — DAG topology | Restructure stage order · declare dependency explicitly |
+| Referencing a file not in the repository index | Rule 1 — Path-based reasoning | Add the file to the repository index first · then reference it |
+| Promoting `COVERAGE_STRUCTURAL_ONLY` to `COVERED` without live evaluation evidence | Rule 10 — Mapping matrix | Retain `COVERAGE_STRUCTURAL_ONLY` · update `gap_note` with infrastructure requirement |
+| Suppressing a `# CONSTRAINT TRADE-OFF` block | Rule 4 — Constraint inheritance | Emit the block unconditionally · name the constraint · name the boundary |
+| Generating two token placements with the same `placement_target` | Rule 9 — One token per location | Deduplicate before emitting manifest · halt if target is ambiguous |
+| Omitting the mapping matrix diff | Rule 10 — Mapping matrix | Always emit the diff · no exception |
 
 ---
 
 ## 10. OpSec Boundary
 
-All client-facing documentation — this README, the evidence bundle, the operator runbook,
-and the generated coverage table — communicates through the normative container and component
-labels defined in Sections 5 and 6. Internal file paths below the `controls/` and `build/`
-directory boundaries, infrastructure hostnames, cloud account identifiers, and signing key
-identifiers are not exposed in any client-facing artefact.
+All client-facing documentation — this README, the evidence bundle, the operator
+runbook, and the generated coverage table — communicates through the normative
+container and component labels defined in Sections 5 and 6. Internal file paths
+below the `controls/` and `build/` directory boundaries, infrastructure hostnames,
+cloud account identifiers, and signing key identifiers are not exposed in any
+client-facing artefact.
 
+### 10.1 Verifiability Without Disclosure
 
-The IĀTŌ evidence chain is verifiable without infrastructure disclosure because:
+The IĀTŌ evidence chain is verifiable without infrastructure disclosure because each
+link in the chain uses a public, infrastructure-independent identifier:
 
 1. The SLSA provenance document links the build artefact to a Git commit SHA and a
-   GitHub Actions workflow ref — both public, neither infrastructure-revealing
-2. The Cosign keyless attestation links the signing identity to a GitHub OIDC token —
-   The identity is the workflow ref, not a private key or an account identifier
-3. The `evidence/verify-bundle.sh` script requires only the bundle itself — no
-   repository clone, no cloud credentials, no author contact
-4. The Sigstore Rekor transparency log provides independent, tamper-evident timestamping —
-   The log entry is verifiable by any party without access to the platform
+   GitHub Actions workflow ref. Both are public. Neither discloses infrastructure.
 
-**Disclosed:** that a specific Git commit produced a specific artefact with a
-specific digest, signed by a specific GitHub Actions workflow identity, at a Rekor log
-index that is publicly auditable.
+2. The Cosign keyless attestation links the signing identity to a GitHub OIDC token.
+   The identity is the workflow ref — not a private key, not an account identifier,
+   not a cloud resource ARN.
 
->**Non-Disclosed:** the internal directory structure of the build environment,
-the cloud accounts hosting the infrastructure, the names of individuals who authored
-the controls, or the network topology of the execution environment.
+3. `evidence/verify-bundle.sh` requires only the bundle, `cosign`, `sha256sum`, and
+   `jq`. No repository clone. No cloud credentials. No author contact.
 
-----
+4. The Sigstore Rekor transparency log provides independent, tamper-evident record of
+   the signing event. The log entry is verifiable by any party without access to the
+   platform, the build environment, or the repository.
 
-***The deception layer (Thinkst Canary Tokens) adds a detection boundary that is not
-disclosed in client-facing documentation. The existence of the detection layer is
-referenced only through its ISM control mappings (`CTRL-TRACE-01` through `CTRL-TRACE-04`)
-in `pipeline/mapping-matrix.json`. Token placement specifics, flock identifiers, and
-console domain are held within the operational boundary and are not disclosed.***
+### 10.2 Disclosure Boundary
 
+**Disclosed** — the following are intentionally public and form the verifiable
+evidence chain:
 
+- The Git commit SHA that produced a specific build artefact
+- The GitHub Actions workflow ref that performed the signing
+- The SHA-256 digest of every declared evidence artefact
+- The Rekor log index of every signing event
+- The ISM, E8, and SOC 2 control IDs mapped in `pipeline/mapping-matrix.json`
+- The existence of a detection layer, referenced by control IDs only
+
+**Not disclosed** — the following are held within the operational boundary and are
+not present in any client-facing artefact:
+
+- The internal directory structure of the build environment below `controls/` and `build/`
+- Cloud account identifiers, subscription IDs, or resource ARNs
+- Infrastructure hostnames, IP addresses, or network topology
+- The identities of individuals who authored the controls
+- Canary Token placement specifics, flock identifiers, and console domain
+- Signing key material or key management infrastructure
+
+### 10.3 Deception Layer Boundary
+
+The Thinkst Canary Token deception layer adds a detection boundary that is not
+disclosed in client-facing documentation. Its existence is acknowledged through
+ISM control mappings `CTRL-TRACE-01` through `CTRL-TRACE-04` in
+`pipeline/mapping-matrix.json`. The control IDs confirm the detection layer exists
+and satisfies ISM-0140, ISM-0585, ISM-0109, and ISM-1554. No further detail is
+disclosed in this document or in the evidence bundle.
+
+Token placement specifics, flock identifiers, console domain, and alert routing
+configuration are operational assets. They are not version-controlled in any
+public-facing repository branch. Their disclosure would negate the detection
+value of the layer.
+
+Any agent operating on this repository must not generate, infer, or expose canary
+placement specifics in any client-facing artefact. References to the deception
+layer in generated documentation are limited to the control IDs declared in
+`pipeline/mapping-matrix.json`.
+
+---
 
 <!--
 END OF SYSTEM INDEX
 All sections above are normative. No section is illustrative.
 Every claim maps to: schema → build → execution → evidence.
 No claim exists without enforcement linkage.
+No section exists without a declared constraint or a declared artefact.
 -->

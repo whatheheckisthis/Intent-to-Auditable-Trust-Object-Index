@@ -907,14 +907,14 @@ the same standing as the execution constraints defined in Section 4.
 
 ### 9.1 Fundamental Operating Rules
 
-**Rule 1 — Path-based reasoning only.**
+**Rule 001 — Path-based reasoning only.**
 Every claim about system state must reference a specific file path, schema field, or
 pipeline stage declared in the repository index (Section 6). Assertions not grounded
 in a declared artefact are prohibited. There is no implicit knowledge about this system.
 If a path is not in the repository index, it does not exist for 
 generation.
 
-**Rule 2 — Schema before implementation.**
+**Rule 002 — Schema before implementation.**
 Before generating any file, the agent must identify the schema in `schemas/` that
 governs it. If no schema exists, the agent must generate the schema first, validate
 it for consistency with all adjacent schemas, and confirm it introduces no
@@ -922,14 +922,14 @@ it for consistency with all adjacent schemas, and confirm it introduces no
 without a governing schema is a constraint violation equivalent to `eval()` — it
 introduces unverifiable behaviour.
 
-**Rule 3 — No inference.**
+**Rule 003 — No inference.**
 The agent must not infer the content of undeclared files, the behaviour of undeclared
 stages, or the meaning of undeclared fields. If a required artefact is absent, the
 agent must declare it absent and halt. Filling a gap with a plausible value is a
 zero-inference violation. The gap must be named, and the agent must wait for an
 explicit declaration before proceeding.
 
-**Rule 4 — Constraint inheritance.**
+**Rule 004 — Constraint inheritance.**
 Every generated file inherits all constraints from all prior iterations of this prompt
 series. Constraints are additive and non-revocable. A later prompt cannot remove a
 constraint imposed by an earlier prompt. The constraint set grows; it does not shrink.
@@ -937,41 +937,41 @@ If a new requirement appears to conflict with a prior constraint, the agent must
 the conflict in a `# CONSTRAINT TRADE-OFF` block and halt — it must not silently
 resolve the conflict in favour of the new requirement.
 
-**Rule 5 — Fail-fast, structured.**
+**Rule 005 — Fail-fast, structured.**
 Every failure path must emit a structured record conforming to
 `schemas/failure-record.schema.json` before exiting non-zero. A raw `exit 1` without
 a structured record is a generation failure. The failure record is not optional when
 the pipeline is under time pressure or when the failure is considered obvious. It is
 mandatory unconditionally.
 
-**Rule 6 — No clock reads.**
+**Rule 006 — No clock reads.**
 No generated file may call `Date.now()`, `datetime.now()`, `time.time()`, `$(date)`,
 or any equivalent within any logic path. The one documented exception is the fallback
 filename in `pipeline/emit-failure.js` for the degenerate case where the failure
 record itself is schema-invalid. That exception is a named trade-off in a specific
 file. It is not a template and must not be reproduced in any other context.
 
-**Rule 7 — ENV := ∅.**
+**Rule 007 — ENV := ∅.**
 No generated file may read from `process.env`, `os.environ`, `System.getenv()`, or
 any equivalent within any logic path. Configuration arrives exclusively via
 schema-bound file mounts declared in `pipeline/pipeline.config.json`. Any generated
 file that requires a secret or a credential must receive it as a file path declared
 in the schema-bound input — not as an environment variable.
 
-**Rule 8 — DAG topology.**
+**Rule 008 — DAG topology.**
 All pipeline stages must form a strictly directed acyclic graph. Every stage must
 declare its upstream dependency. No stage may write to the input scope of a prior
 stage. Back-edges are constraint violations. A stage that is added without a declared
 upstream is assumed to have no dependency — this assumption must be made explicit,
 not left implicit.
 
-**Rule 9 — One token per location.**
+**Rule 009 — One token per location.**
 When generating Canary Token placement manifests, no two entries may share the same
 `placement_target`. The schema enforces uniqueness; the agent must also check this
 before emitting a manifest. A token that fires must be unambiguously attributable to
 a single placement target.
 
-**Rule 10 — Mapping matrix is always updated.**
+**Rule 010 — Mapping matrix is always updated.**
 Every generated file that satisfies an ISM, E8, or SOC 2 control must be accompanied
 by a diff to `pipeline/mapping-matrix.json`. The diff must declare `coverage_status`
 as either `COVERED` (live pipeline-executed) or `COVERAGE_STRUCTURAL_ONLY` (schema-valid
@@ -979,98 +979,6 @@ shape, live evaluation requires infrastructure external to the pipeline). Omitti
 mapping matrix update is a generation failure equivalent to producing evidence with no
 declared control reference.
 
-
-
-### 9.2 Step-by-Step Agent Reasoning Workflow
-
-When given a task involving this repository, execute the following steps in order.
-Do not skip steps. Do not reorder steps. Each step is a gate — if a step cannot be
-completed, halt and declare why before proceeding.
-
-```
-Step 1 — Identify the target file or stage.
-          State the canonical path of the artefact to be generated or modified.
-          Confirm the path exists in the repository index (Section 6).
-          If it does not exist in the index: halt.
-          Do not generate a file at a path not declared in the index without first
-          declaring the addition and justifying it against the constraint set.
-
-Step 2 — Identify the governing schema.
-          State which file in schemas/ governs this artefact.
-          If no schema governs it: generate the schema first (Step 2a).
-          Do not proceed to Step 3 until the schema exists and is validated.
-
-          Step 2a — Generate schema.
-                    Validate consistency with all adjacent schemas.
-                    Confirm no additionalProperties violations.
-                    Confirm all required fields are declared.
-                    Confirm all enum values are exhaustive.
-                    Update the repository index with the new schema path.
-
-Step 3 — Identify upstream dependencies.
-          State which stage or artefact must exist before this file can be generated.
-          Confirm that those artefacts are present in pipeline/outputs/ or are produced
-          by a prior stage in the declared DAG.
-          If any upstream artefact is absent: halt and declare what is missing.
-
-Step 4 — Identify downstream consumers.
-          State which stage or artefact receives the output of this file.
-          Confirm the output schema of this file matches the input schema of the
-          downstream consumer.
-          If schemas are incompatible, declare the mismatch and halt.
-
-Step 5 — Identify constraint surface.
-          For each constraint below, state whether it applies to this file and how
-          It is enforced in the generated code:
-
-          [ ] Δt = 0         — no clock reads in any logic path
-          [ ] ENV := ∅       — no process.env or os.environ reads
-          [ ] No eval/exec   — no dynamic dispatch or reflection
-          [ ] DAG            — upstream declared, no back-edges
-          [ ] Fail-fast      — validation failure halts immediately, no coercion
-          [ ] Schema ingress — all inputs validated at the boundary before use
-          [ ] Structured failure record — exit 1 always preceded by emit-failure.js
-
-Step 6 — Identify ISM control mapping.
-          State which ISM, E8, or SOC 2 controls this file.
-          State which entry in pipeline/mapping-matrix.json covers this file.
-          If no entry exists, generate the mapping matrix diff (Step 10 prerequisite).
-
-Step 7 — Generate the file.
-          Apply all constraints identified in Steps 1–6.
-          Every claim in the generated file must be traceable to a schema field
-          or a pipeline stage declared in the repository index.
-          Do not introduce any field, variable, or code path not derivable from
-          the declared schema.
-
-Step 8 — Generate the comment block.
-          Prepend every generated file with the following block in the file's
-          native comment syntax:
-
-          # File: <canonical path from repository index>
-          # Role: <one sentence — what this file does in the pipeline>
-          # Constraints enforced: <comma-separated list from Step 5>
-          # Upstream: <stage name or ROOT>
-          # Downstream: <stage name or TERMINAL>
-          # ISM controls: <comma-separated control IDs from Step 6>
-
-Step 9 — Declare trade-offs.
-          If any constraint from Step 5 was relaxed or could not be fully enforced:
-          emit a # CONSTRAINT TRADE-OFF block immediately before the affected code.
-          The block must name: the constraint relaxed, the rationale, and the
-          boundary condition that contains the relaxation.
-          A trade-off that is not declared is a transparency violation.
-
-Step 10 — Update mapping matrix.
-           Emit a diff to pipeline/mapping-matrix.json.
-           The diff must include all fields required by schemas/mapping-matrix.schema.json:
-           control_id, control_description, framework_refs, evidence_artefact,
-           pipeline_stage, attestation_type, coverage_status.
-           coverage_status must be COVERED or COVERAGE_STRUCTURAL_ONLY.
-           If COVERAGE_STRUCTURAL_ONLY: include gap_note explaining what infrastructure
-           is required to promote it to COVERED.
-           This step is never optional.
-```
 
 
 

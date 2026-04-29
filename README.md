@@ -47,7 +47,7 @@ The system is not designed to be convenient. It is designed to be correct, repro
 and independently verifiable by a party with no access to the authors, the infrastructure,
 or the build environment.
 
----
+
 
 ## 2. Architectural Invariant
 
@@ -76,9 +76,9 @@ For all `x ∈ V` (the set of valid execution contexts), `F(x)` is a single-valu
 Stochastic or environment-sensitive execution paths are constraint violations, not
 implementation choices.
 
----
 
-## 3. Schema Build Layer
+
+## 3. Schema Build 
 
 The schema build layer is the root of all system guarantees. It is not a validation
 step within the pipeline. It is the compilation stage from which all executable
@@ -117,7 +117,7 @@ non-invertible flow. No stage writes back to a prior stage. Evidence does not mo
 schema. Execution does not modify build artefacts. The DAG is acyclic at the
 architectural level, not merely at the pipeline configuration level.
 
----
+
 
 ## 4. Execution Constraints
 
@@ -137,7 +137,7 @@ pipeline run references — are declared as typed constants in
 `pipeline/pipeline.config.json`, validated against `schemas/pipeline-config.schema.json`,
 and injected as frozen schema-bound values. They are versioned inputs, not runtime reads.
 
----
+
 
 ### 4.2 Zero-Inference Runtime
 
@@ -156,7 +156,7 @@ exclusively through schema-bound file-mounted inputs.
 `pipeline/runtime-versions.json`. The verification result is written to
 `pipeline/outputs/runtime-verification.json` before any pipeline logic executes.
 
----
+
 
 ### 4.3 Immutable Ingestion
 
@@ -176,7 +176,7 @@ passed to any downstream component.
 Mutation test results in `pipeline/outputs/mutations/mutation-report.json` prove that
 the validator rejects invalid inputs — zero mutation escapes is the only acceptable result.
 
----
+
 
 ## 5. C4 Model
 
@@ -215,7 +215,7 @@ graph TD
 - `E → B`: GRC partners consume via `evidence/verify-bundle.sh` — operable without
   repository access, requiring only `cosign`, `sha256sum`, and `jq`
 
----
+
 
 ### Level 2 — Container Decomposition (Schema Compilation Layer Explicit)
 
@@ -255,7 +255,7 @@ graph LR
 | Orchestration & runtime | `orchestration/` | Executes stubbed inputs through control logic via DAG | Strict DAG; all edges declared at initialisation |
 | Verification & analytics | `evidence/` | Produces SHA-256 bound evidence and Ed25519 signatures | Output bounded to declared filesystem scope |
 
----
+
 
 ### Level 3 — Component Interaction (Schema-Enforced Execution Pipeline)
 
@@ -307,7 +307,7 @@ Calculates `SHA-256(output_state)`, chains to the prior execution block, signs
 with Ed25519. Key material injected at initialisation — never from environment.
 Output written to `evidence/` as an append-only record.
 
----
+
 
 ### Level 4 — Cryptographic Primitive (Invariant Binding)
 
@@ -336,7 +336,7 @@ log. The output schema is declared in `schemas/slsa-provenance.schema.json`.
 chain is reproducible on any POSIX-compliant system with `sha256sum`, `cosign`, and
 `slsa-verifier` installed.
 
----
+
 
 ## 6. Repository Index
 
@@ -490,7 +490,7 @@ IĀTŌ/
 | `evidence/` | `schemas/bundle-manifest.schema.json` | Signed output artefacts — append-only | CI pipeline only · no human writes |
 | `tests/` | `schemas/mutation-manifest.schema.json` | Mutation fixtures and verification harnesses | Human authors only |
 
----
+
 
 ## 7. Versioning Model
 
@@ -536,7 +536,7 @@ must produce a corresponding update to `pipeline/mapping-matrix.json` that maps 
 artefact to its ISM control references. A commit that changes a schema without updating the
 mapping matrix is an incomplete state mutation and must not pass the `evaluate-policies` gate.
 
----
+
 
 ## 8. Evidence Model
 
@@ -569,7 +569,7 @@ Any evidence artefact in `evidence/` must be independently replayable by a party
 
 `verify-bundle.sh` reads all verification parameters from `evidence/bundle-manifest.json`
 using `jq`. It contains no hardcoded values and no environment variable reads except `PATH`.
-It exits 0 on full verification, 1 on any digest mismatch or signature failure.
+It exists 0 on full verification, 1 on any digest mismatch or signature failure.
 
 ### Audit Independence
 
@@ -581,8 +581,7 @@ The evidence store is designed for a party that:
 4. Must be able to confirm or refute every architectural claim from the artefacts alone
 
 This is not a secondary goal. It is the primary design constraint of the evidence model.
-An evidence bundle that requires author explanation to interpret is an incomplete evidence
-bundle.
+An evidence bundle that requires an author explanation to interpret is incomplete.
 
 # IĀTŌ — Quick Start
 
@@ -598,7 +597,7 @@ Governs : all repositories subordinate to the IĀTŌ assurance programme
 > failure model. It does not cover programme governance or architectural design —
 > those are defined in the [programme index](README.md).
 
----
+
 
 ## Prerequisites
 
@@ -629,7 +628,7 @@ exclusively. All container invocations use `--read-only`, `--network=none`, and
 `--env-host=false`. These flags are enforced by `policies/podman-runtime.rego`
 and are not optional.
 
----
+
 
 ## Installation
 
@@ -662,7 +661,7 @@ Expected output: `"RUNTIME_CONSISTENT"`. Any other value means a tool version or
 ENV contamination check failed. Inspect `pipeline/outputs/runtime-verification.json`
 for the specific finding before proceeding.
 
----
+
 
 ## Local Execution
 
@@ -729,7 +728,7 @@ baseline. This is a runtime consistency failure. Inspect
 `pipeline/outputs/parity-verification.json` to identify which artefact diverged
 and at which stage.
 
----
+
 
 ## Output Verification
 
@@ -741,15 +740,15 @@ auditor-operable without repository access. Verification requires only
 ./evidence/verify-bundle.sh
 ```
 
-`verify-bundle.sh` reads all verification parameters from `evidence/bundle-manifest.json`
+`verify-bundle.sh` reads all verification parameters from `evidence/bundle-manifest.json.`
 using `jq`. It performs the following checks in sequence:
 
 1. SHA-256 digest of every declared artefact against the manifest
-2. Ed25519 signature verification via `cosign verify-blob`
+2. Ed25519 signature verification via `cosign verify-blob.`
 3. Rekor transparency log entry confirmation
-4. SLSA provenance verification via `slsa-verifier`
+4. SLSA provenance verification via `slsa-verifier.`
 
-The script exits 0 on full verification. It exits 1 on any digest mismatch,
+The script exits 0 on full verification. It exists 1 on any digest mismatch,
 signature failure, or missing artefact, and prints a structured `[FAIL]` line
 identifying the specific artefact and the check that failed.
 
@@ -781,7 +780,7 @@ Every artefact in `evidence/` carries:
 Verification requires no repository access, no cloud credentials, and no contact
 with the authors. The bundle is designed for a party that does not trust the authors.
 
----
+
 
 ## CI Pipeline
 
@@ -811,7 +810,7 @@ Every stage emits a structured exit record via `pipeline/emit-failure.js` in an
 
 No stage is optional. No stage can be bypassed by pipeline configuration.
 
----
+
 
 ## Execution
 
@@ -835,10 +834,10 @@ To inspect Job output:
 ```bash
 kubectl logs job/iato-pipeline --follow
 kubectl get job iato-pipeline -o json \
-  | jq '.status'
+  | jq '.status.'
 ```
 
-A Job that exits with a non-zero code will have written structured failure records
+A Job that exists with a non-zero code will have written structured failure records
 to its output volume before terminating. Retrieve them from the declared output
 volume mount path before the Job pod is cleaned up.
 
@@ -847,7 +846,7 @@ OPA policy admission (optional): if the cluster runs OPA Gatekeeper or Kyverno,
 the same runtime constraints at the Kubernetes admission layer. This is a cluster
 configuration step and is not automated by the IĀTŌ pipeline.
 
----
+
 
 ## Failure Model
 
@@ -904,7 +903,7 @@ Non-compliance with these rules constitutes a generation failure regardless of t
 quality of other output. These rules are not guidelines. They are constraints with
 the same standing as the execution constraints defined in Section 4.
 
----
+
 
 ### 9.1 Fundamental Operating Rules
 
@@ -980,7 +979,7 @@ shape, live evaluation requires infrastructure external to the pipeline). Omitti
 mapping matrix update is a generation failure equivalent to producing evidence with no
 declared control reference.
 
----
+
 
 ### 9.2 Step-by-Step Agent Reasoning Workflow
 
@@ -1010,7 +1009,7 @@ Step 2 — Identify the governing schema.
 
 Step 3 — Identify upstream dependencies.
           State which stage or artefact must exist before this file can be generated.
-          Confirm those artefacts are present in pipeline/outputs/ or are produced
+          Confirm that those artefacts are present in pipeline/outputs/ or are produced
           by a prior stage in the declared DAG.
           If any upstream artefact is absent: halt and declare what is missing.
 
@@ -1018,24 +1017,24 @@ Step 4 — Identify downstream consumers.
           State which stage or artefact receives the output of this file.
           Confirm the output schema of this file matches the input schema of the
           downstream consumer.
-          If schemas are incompatible: declare the mismatch and halt.
+          If schemas are incompatible, declare the mismatch and halt.
 
 Step 5 — Identify constraint surface.
           For each constraint below, state whether it applies to this file and how
-          it is enforced in the generated code:
+          It is enforced in the generated code:
 
           [ ] Δt = 0         — no clock reads in any logic path
           [ ] ENV := ∅       — no process.env or os.environ reads
           [ ] No eval/exec   — no dynamic dispatch or reflection
           [ ] DAG            — upstream declared, no back-edges
           [ ] Fail-fast      — validation failure halts immediately, no coercion
-          [ ] Schema ingress — all inputs validated at boundary before use
+          [ ] Schema ingress — all inputs validated at the boundary before use
           [ ] Structured failure record — exit 1 always preceded by emit-failure.js
 
 Step 6 — Identify ISM control mapping.
-          State which ISM, E8, or SOC 2 controls this file satisfies.
+          State which ISM, E8, or SOC 2 controls this file.
           State which entry in pipeline/mapping-matrix.json covers this file.
-          If no entry exists: generate the mapping matrix diff (Step 10 prerequisite).
+          If no entry exists, generate the mapping matrix diff (Step 10 prerequisite).
 
 Step 7 — Generate the file.
           Apply all constraints identified in Steps 1–6.
@@ -1073,7 +1072,7 @@ Step 10 — Update mapping matrix.
            This step is never optional.
 ```
 
----
+
 
 ### 9.3 Prohibited Agent Behaviours
 
@@ -1096,7 +1095,7 @@ output and restart from Step 1 of the reasoning workflow.
 | Generating two token placements with the same `placement_target` | Rule 9 — One token per location | Deduplicate before emitting manifest · halt if target is ambiguous |
 | Omitting the mapping matrix diff | Rule 10 — Mapping matrix | Always emit the diff · no exception |
 
----
+
 
 ## 10. OpSec Boundary
 
@@ -1167,7 +1166,7 @@ placement specifics in any client-facing artefact. References to the deception
 layer in generated documentation are limited to the control IDs declared in
 `pipeline/mapping-matrix.json`.
 
----
+
 
 <!--
 END OF SYSTEM INDEX

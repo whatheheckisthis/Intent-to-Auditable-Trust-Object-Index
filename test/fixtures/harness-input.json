@@ -1,6 +1,0 @@
-{
-  "pipeline_image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "input_fixture_path": "/input",
-  "output_scope_path": "/output",
-  "run_count": 2
-}

@@ -1,334 +1,390 @@
 
-## Formal Grammar Specification - **BNF / State-Semantic DSL**
+# Intent-to-Auditable-Trust-Object-Index (IATO)
+
+## Overview
+
+This document defines a closed semantic notation system for reasoning about a parameterised execution state space indexed by vector length (VL).
+
+The model is not an implementation specification and does not describe hardware, hypervisors, or system internals.
+
+Instead, it defines:
+
+- a single global configuration space S
+- a VL-indexed substructure over vector state
+- a labelled transition relation over configurations
+- an observation-preserving projection semantics
+- a refinement structure over state equivalence
+
+All infrastructure components are treated as *interpretive domains of projection*, not operational systems.
 
 
- ### 1. Lexical Definitions
 
-```bnf
-<IDENT>        ::= letter { letter | digit | "_" }
+## Global State Space
 
-<REGISTER>     ::= "HCR_EL2"
-                | "VTTBR_EL2"
-                | "VTCR_EL2"
-                | "ELR_EL2"
-                | "SPSR_EL2"
-                | "DAIF"
+The system is defined as a single configuration:
 
-<VECTOR_REG>   ::= "Z" "[" <INT> ".." <INT> "]"
-<PRED_REG>     ::= "P" "[" <INT> ".." <INT> "]"
-
-<INT>          ::= digit { digit }
-
-<VM_STATE>     ::= "created"
-                | "configured"
-                | "running"
-                | "vmexit"
-                | "migrating"
-                | "destroyed"
 ```
-
----
-
- ### 2. Global System State
-
-```bnf
-<S> ::= "⟨" <S_EL2> "," <S_Stage2> "," <S_SVE2> "," <S_QEMU> "," <S_KVM> "," <S_Microarch> "⟩"
-```
-
-Constraint:
-
-* All execution states MUST be represented inside S
-* No external state exists
-
----
-
- ### 3. EL2 State Model
-
-```bnf
-<S_EL2> ::= "⟨"
-              <REGISTER> ","
-              <REGISTER> ","
-              <REGISTER> ","
-              "DAIF" ","
-              "ELR_EL2" ","
-              "SPSR_EL2"
-            "⟩"
-```
-
-Interpretation constraint:
-
-* HCR_EL2 controls execution mode
-* VTTBR_EL2 defines Stage-2 base
-* VTCR_EL2 defines translation rules
-* DAIF defines interrupt mask state
-
-Invariant:
-
-```bnf
-∀ S_t : EL2_state is fully materialised at VM entry/exit
-```
-
----
-
- ### 4. Stage-2 MMU Model
-
-```bnf
-<S_Stage2> ::= "⟨" <VMID> "," <IPA_PA_MAP> "," <TLB_STATE> "⟩"
-
-<VMID>        ::= <INT>
-
-<IPA_PA_MAP>  ::= "IPA→PA"
-
-<TLB_STATE>   ::= <IDENT>
-```
-
-Constraints:
-
-```bnf
-∀ VM_i, VM_j :
-  VM_i ≠ VM_j ⇒ VMID_i ≠ VMID_j
-```
-
-```bnf
-IPA→PA is injective per VMID domain
-```
-
----
-
- ### 5. SVE2 Vector State Model
-
-```bnf
-<S_SVE2> ::= "⟨" <Z_BLOCK> "," <P_BLOCK> "," "FFR" "," <VL> "⟩"
-```
-
----
-
- ### 5.1 Register Blocks
-
-```bnf
-<Z_BLOCK> ::= "Z[" "0" ".." "31" "]"
-<P_BLOCK> ::= "P[" "0" ".." "15" "]"
-```
-
----
-
- ### 5.2 Vector Length
-
-```bnf
-<VL> ::= <INT>
-```
-
-Constraint system:
-
-```bnf
-VL ∈ {128, 256, 512, 1024, 2048}
-∀ S_VCPU : VL is invariant over lifecycle
-```
-
----
-
- ### 5.3 SVE2 Atomicity Rule
-
-```bnf
-ATOMIC(S_SVE2) :=
-  SAVE(Z[0..31]) ∧
-  SAVE(P[0..15]) ∧
-  SAVE(FFR)
-```
-
-Constraint:
-
-```bnf
-No partial SVE state may exist at VM exit boundary
-```
-
----
-
- ### 6. QEMU Projection Model
-
-```bnf
-<S_QEMU> ::= "⟨" <SIGMA_STABLE> "," <ID_MASK> "," <VCPU_FEATURES> "⟩"
-```
-
----
-
- ### 6.1 Feature Set Relation
-
-```bnf
-<SIGMA_STABLE> ::= "Σ_host ∩ Σ_guest"
-```
-
-Constraint:
-
-```bnf
-Σ_guest ⊆ Σ_host
-```
-
----
-
- ### 6.2 ID Register Masking
-
-```bnf
-<ID_MASK> ::= <IDENT>
-```
-
-Semantics:
-
-* bit-level suppression of ISA features
-
----
-
- ### 7. KVM Execution Model
-
-```bnf
-<S_KVM> ::= "⟨" <VCPU_STATE> "," <EXIT_REASON> "," <RUN_CONTEXT> "⟩"
-```
-
----
-
- ### 7.1 VCPU State Machine
-
-```bnf
-<VCPU_STATE> ::= <VM_STATE>
-```
-
-Transition relation:
-
-```bnf
-created → configured → running → vmexit → migrating → destroyed
-```
-
-Formal rule:
-
-```bnf
-T_KVM(S_t) ⊆ S_t+1
-```
-
----
-
- ### 8. Microarchitectural State Model (Adversarial Domain)
-
-```bnf
-<S_Microarch> ::= "⟨" <BTB> "," <BHB> "," <RSB> "," <CACHE> "," <PIPELINE> "⟩"
+S = ⟨ v, σ ⟩
 ```
 
 Where:
 
-```bnf
-<BTB>       ::= <IDENT>
-<BHB>       ::= <IDENT>
-<RSB>       ::= <IDENT>
-<CACHE>     ::= <IDENT>
-<PIPELINE>  ::= <IDENT>
+- `v` : vector-length indexed state family
+- `σ` : architectural projection state
+
+Constraint:
+
+```
+
+All semantic reasoning is performed over S only.
+No external state exists outside S.
+
+```
+
+
+## Vector-Length Indexing
+
+Vector length is a fixed indexing dimension:
+
+```
+
+VL ∈ {128, 256, 512, 1024, 2048}
+
+```
+
+Each configuration induces a partitioned state family:
+
+```
+
+v ∈ V(VL)
+
 ```
 
 Constraint:
 
-```bnf
-∀ S_i, S_j :
-  S_Microarch must not encode observable cross-VM channel
 ```
 
----
+VL is invariant under execution projection.
 
- ### 9. Transition System Definition
-
-```bnf
-<SYSTEM_TRANSITION> ::= "T(S)" ":" S "→" S
 ```
 
-Decomposition rule:
+Interpretation:
 
-```bnf
-T(S) =
-  T_EL2(S_EL2) ∪
-  T_Stage2(S_Stage2) ∪
-  T_SVE2(S_SVE2) ∪
-  T_QEMU(S_QEMU) ∪
-  T_KVM(S_KVM)
+VL does not evolve as a dynamic variable; it defines the structural fibre of state.
+
+
+## Observation Semantics
+
+An observation function defines equivalence:
+
+```
+
+O : S → O
+
+```
+
+Definition:
+
+```
+
+S1 ≈ S2  ⇔  O(S1) = O(S2)
+
 ```
 
 Constraint:
 
-* Microarchitectural state is **not directly controllable**
-* It is only constrained indirectly
+```
+
+All reasoning is quotient-preserving under ≈
+
+```
+
+Interpretation:
+
+Only σ-level projection is observable; internal vector structure is not.
 
 ---
 
- ### 10. Projection Function (QEMU)
+## Transition Structure
 
-```bnf
-<PROJECTION> ::= "Proj(QEMU)" "=" "Σ_host ∩ Σ_guest"
+The system is defined as a labelled transition relation:
+
+```
+
+T : S → S
+
+```
+
+with decomposition:
+
+```
+
+T = T_exec ∪ T_reconf ∪ T_mig
+
+```
+
+Interpretation:
+
+- transitions are partitioned labels over a single relation
+- all transitions preserve well-formedness of S
+- no transition introduces external state
+
+Constraint:
+
+```
+
+Transitions operate only within the closed space S
+
+```
+
+
+
+## Embedding Across VL Fibres
+
+An embedding exists between vector-length-indexed spaces:
+
+```
+
+ι : V(VL₁) → V(VL₂)
+
+```
+
+Condition:
+
+```
+
+VL₁ ≤ VL₂
+
 ```
 
 Invariant:
 
-```bnf
-∀ execution :
-  Σ_stable is computed at VCPU creation only
 ```
 
----
+O(ι(v)) = O(v)
 
- ### 11. Isolation Predicate (Stage-2)
-
-```bnf
-<ISO> ::= "Iso(Stage2)"
 ```
 
-Definition:
+Interpretation:
 
-```bnf
-Iso(Stage2) :=
-  ∀ VM_i, VM_j :
-    VM_i ≠ VM_j ⇒ IPA_i ∩ IPA_j = ∅
+Embedding is observationally inert; it preserves equivalence under projection.
+
+
+
+## Refinement Structure
+
+Refinement defines a simulation preorder:
+
 ```
 
----
+S1 ⊑ S2
 
- ### 12. Vector Correctness Predicate
-
-```bnf
-<VEC_CORRECT> ::= "Vec(SVE2)"
 ```
 
 Definition:
 
-```bnf
-Vec(SVE2) :=
-  VL invariant ∧
-  ATOMIC(Z, P, FFR)
 ```
 
----
+S2 → S2'  ⇒  ∃ S1' :
+S1 → S1' ∧ S1' ≈ S2'
 
- ### 13. System Correctness Predicate
-
-```bnf
-<CORRECT> ::= "CORRECT(S)"
 ```
 
-Definition:
+Interpretation:
 
-```bnf
+Refinement is a closure condition over the transition structure under observation equivalence.
+
+
+
+## Bisimulation Structure
+
+Bisimulation is the symmetric closure of refinement:
+
+```
+
+R is bisimulation iff:
+S1 R S2 ⇒ S1 ≈ S2
+and transitions are mutually simulated
+
+```
+
+Interpretation:
+
+Bisimulation is an equilibrium relation over the transition quotient space.
+
+
+
+## Migration as Structural Reindexing
+
+Migration is treated as:
+
+```
+
+mig : S → S
+
+```
+
+Constraint:
+
+```
+
+O(mig(S)) = O(S)
+
+```
+
+Interpretation:
+
+Migration is not an operational transformation; it is a structure-preserving re-indexing over VL-fibred state.
+
+
+
+## Vector-State Integrity
+
+Vector state is subject to a strict atomicity condition:
+
+```
+
+VL-state is always complete at observation boundaries
+
+```
+
+Constraint:
+
+```
+
+No partial vector-state is observable under projection O
+
+```
+
+Interpretation:
+
+The vector state is treated as indivisible at the semantic boundary points.
+
+
+
+## Isolation Structure 
+
+Isolation is defined over partitioned state domains:
+
+```
+
+Iso(S) :=
+∀ i ≠ j :
+IPA_i ∩ IPA_j = ∅
+
+```
+
+Interpretation:
+
+Isolation is a property of disjointness in projection space, not of internal mechanism.
+
+
+
+## Correctness Predicate
+
+System correctness is defined as:
+
+```
+
 CORRECT(S) :=
-  Arch_Correct(S)
-  ∧ Iso(Stage2)
-  ∧ Vec(SVE2)
-  ∧ Proj(QEMU)
-  ∧ Microarch_Noninterference(S)
+Iso(S)
+∧ VL-invariance
+∧ observation preservation
+∧ transition closure
+∧ embedding consistency
+
 ```
 
----
+Interpretation:
+```
+Correctness is a structural property over the closed semantic object S.
+```
 
- ### 14. Grammar Summary
 
-This DSL defines:
+## Transition Decomposition Principle
 
-* A single global state space S
-* Fully decomposed substate domains
-* Deterministic transition functions over EL2/KVM/Stage-2/QEMU
-* Constrained vector execution semantics (SVE2)
-* Explicit adversarial microarchitectural leakage model
-* Feature projection as set intersection semantics
+All transitions preserve structure:
 
+```
+
+T preserves:
+
+* VL-fibre consistency
+* observation quotient
+* refinement closure
+
+```
+
+Constraint:
+
+```
+
+No transition introduces new semantic domains
+
+```
+
+
+
+## Microarchitectural Domain 
+
+A secondary domain is acknowledged:
+
+```
+
+M = ⟨ BTB, BHB, CACHE, PIPELINE ⟩
+
+```
+
+**Constraint:**
+
+```
+
+M is not part of S
+M is not controlled by T
+M is not observable via O
+
+```
+
+**Interpretation:**
+
+M exists only as a boundary condition preventing cross-state interference assumptions.
+
+The model defines:
+
+- a closed configuration space S
+- VL as a structural index, not a runtime variable
+- a labelled transition relation over S
+- an observation quotient O
+- refinement and bisimulation over equivalence classes
+- embedding between VL fibres as a structure preserving injection
+- migration as observationally inert reindexing
+
+
+This system is:
+
+- not an implementation model
+- not a hardware model
+- not a hypervisor specification
+- not an execution engine description
+
+It is a closed semantic notation system over a VL-indexed state space with observational quotienting and refinement structure.
+
+### References
+
+```
+Milner, Robin. Communication and Concurrency. Prentice Hall, 1989.
+
+Park, David. “Concurrency and Automata on Infinite Sequences.” Theoretical Computer Science, vol. 138, no. 2, 1982, pp. 167–183.
+
+Larsen, Kim G., and Arne Skou. “Bisimulation through Probabilistic Testing.” Information and Computation, vol. 94, no. 1, 1991, pp. 1–28.
+
+Milner, Robin. A Calculus of Communicating Systems. Springer, 1980.
+
+Hennessy, Matthew, and Robin Milner. “Algebraic Laws for Nondeterminism and Concurrency.” Journal of the ACM, vol. 32, no. 1, 1985, pp. 137–161.
+
+Winskel, Glynn. The Formal Semantics of Programming Languages: An Introduction. MIT Press, 1993.
+
+Plotkin, Gordon D. “A Structural Approach to Operational Semantics.” Aarhus University, 1981.
+
+Aspinall, David, and Lars Birkedal. “Type-Theoretic Foundations of Programming Languages.” In Handbook of Logic in Computer Science, vol. 5, Oxford University Press, 2000.
+```

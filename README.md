@@ -1,390 +1,183 @@
+# IĀTŌ — Intent-to-Auditable-Trust-Object
 
-# Intent-to-Auditable-Trust-Object-Index (IATO)
+## 1. Index Overview
 
-## Overview
+Conventional control registers are document artefacts maintained manually, assessed periodically, and structurally incapable of producing machine evidence. When an auditor or IRAP assessor requests evidence of control implementation, the response is typically a collection of screenshots, policy documents, and prose attestations assembled after the fact.
 
-This document defines a closed semantic notation system for reasoning about a parameterised execution state space indexed by vector length (VL).
+IĀTŌ replaces this model with a closed control index.
 
-The model is not an implementation specification and does not describe hardware, hypervisors, or system internals.
+Every security obligation across NZISM, ISM, E8 ML3, DISP, and APRA CPS 220 is represented as a single enumerated entry in the index. Each entry carries a defined assertion, a specified evidence artefact class, and a crosswalk to every framework identifier it satisfies. Control coverage is not claimed; it is asserted against observable state and committed to an immutable evidence ledger.
 
-Instead, it defines:
+The index operates as the taxonomy of the SIRA/IĀTŌ dual assurance architecture. 
 
-- a single global configuration space S
-- a VL-indexed substructure over vector state
-- a labelled transition relation over configurations
-- an observation-preserving projection semantics
-- a refinement structure over state equivalence
+SIRA produces quantified risk outputs from ledger observations. 
 
-All infrastructure components are treated as *interpretive domains of projection*, not operational systems.
+Defines what is observed, how it is asserted, and what constitutes valid evidence.
 
+### E8 ML3 — ASD Essential Eight Maturity Level 3
 
+ML3 is the baseline floor for all AU government and regulated enterprise engagements.
 
-## Global State Space
+| Strategy | ML3 Assertion Scope |
+|---|---|
+| Application control | Allowlist enforcement, scope coverage, exception governance |
+| Patch applications | Patch currency SLA, automated detection, gap evidence |
+| Configure MS Office macros | Macro signing, sandbox enforcement, user override controls |
+| User application hardening | Browser plugin governance, JScript/ActiveX control surface |
+| Restrict admin privileges | PAM coverage, standing access elimination, JIT attestation |
+| Patch operating systems | OS patch currency, EOL enforcement, unsupported asset register |
+| MFA | Phishing, resistant MFA, privileged and unprivileged coverage |
+| Regular backups | RTO/RPO-bound, restoration tested, integrity-chained |
 
-The system is defined as a single configuration:
-
-```
-S = ⟨ v, σ ⟩
-```
-
-Where:
-
-- `v` : vector-length indexed state family
-- `σ` : architectural projection state
-
-Constraint:
-
-```
-
-All semantic reasoning is performed over S only.
-No external state exists outside S.
-
-```
-
-
-## Vector-Length Indexing
-
-Vector length is a fixed indexing dimension:
-
-```
-
-VL ∈ {128, 256, 512, 1024, 2048}
-
-```
-
-Each configuration induces a partitioned state family:
-
-```
-
-v ∈ V(VL)
-
-```
-
-Constraint:
-
-```
-
-VL is invariant under execution projection.
-
-```
-
-Interpretation:
-
-VL does not evolve as a dynamic variable; it defines the structural fibre of state.
-
-
-## Observation Semantics
-
-An observation function defines equivalence:
-
-```
-
-O : S → O
-
-```
-
-Definition:
-
-```
-
-S1 ≈ S2  ⇔  O(S1) = O(S2)
-
-```
-
-Constraint:
-
-```
-
-All reasoning is quotient-preserving under ≈
-
-```
-
-Interpretation:
-
-Only σ-level projection is observable; internal vector structure is not.
+All eight strategies are asserted at ML3. Evidence is structured for direct IRAP assessor consumption and committed to the append only evidence ledger as artefacts.
 
 ---
 
-## Transition Structure
+## 2. Index Structure
 
-The system is defined as a labelled transition relation:
+### 2.1 Control Entry Model
 
+Each entry in the IĀTŌ index is a single, self-contained assurance target. No control exists as a prose description alone. Every entry specifies:
+
+| Field | Definition |
+|---|---|
+| `control_id` | Unique enumerated identifier within the index |
+| `title` | Plain-language control name |
+| `assertion` | Machine-evaluable statement of required control state |
+| `evidence` | Defined artefact class and source; committed to ledger on assertion |
+| `frameworks` | Every framework identifier this entry satisfies |
+
+### 2.2 Crosswalk Model
+
+Controls are not maintained as per-framework silos. A single index entry satisfies obligations across multiple frameworks simultaneously. Evidence is produced once and applies to every framework tag the entry carries.
+
+```yaml
+control_id: IATO-AC-012
+title:      Privileged Access — Standing Access Elimination
+assertion:  no standing privileged accounts outside defined break-glass scope
+evidence:   IAM role inventory extract, last-reviewed timestamp, exception register
+frameworks:
+  - NZISM:        AC-7
+  - ISM:          ISM-1175, ISM-1507
+  - E8 ML3:       Restrict Administrative Privileges — ML3
+  - DISP:         ICT-04
+  - APRA CPS 220: ORM-3.2 (operational risk control)
 ```
 
-T : S → S
+This eliminates duplicate evidence production and provides a single auditable trail regardless of which framework is the assurance target for a given engagement.
 
-```
+---
 
-with decomposition:
+## 3. E8 ML3 Control Domains
 
-```
+The following index domains map directly to the eight Essential Eight strategies at ML3. Each domain entry is an assertion against observable control state — not a documentation claim.
 
-T = T_exec ∪ T_reconf ∪ T_mig
+### 3.1 Application Control
 
-```
+| Control Scope | Assertion |
+|---|---|
+| Allowlist enforcement | Only explicitly permitted executables run; all others are blocked by policy |
+| Scope coverage | Allowlist coverage extends to all user workstations, servers, and internet-facing systems |
+| Exception governance | All allowlist exceptions are time-bound, approved, and ledger-recorded |
 
-Interpretation:
+### 3.2 Patch Applications
 
-- transitions are partitioned labels over a single relation
-- all transitions preserve well-formedness of S
-- no transition introduces external state
+| Control Scope | Assertion |
+|---|---|
+| Patch currency SLA | Critical patches applied within defined SLA; evidence emitted per patch cycle |
+| Automated detection | Vulnerability scanning runs on schedule; results committed to ledger |
+| Gap evidence | Unpatched assets are enumerated, risk-accepted, and tracked in the exception register |
 
-Constraint:
+### 3.3 Configure Microsoft Office Macros
 
-```
+| Control Scope | Assertion |
+|---|---|
+| Macro signing | Only macros signed by a trusted publisher execute; unsigned macros are blocked |
+| Sandbox enforcement | Macro execution is isolated; network and filesystem access is constrained |
+| User override controls | Users cannot modify macro execution policy; override attempts are logged |
 
-Transitions operate only within the closed space S
+### 3.4 User Application Hardening
 
-```
+| Control Scope | Assertion |
+|---|---|
+| Browser plugin governance | Only explicitly approved plugins are permitted; unapproved plugins are blocked |
+| JScript/ActiveX control surface | JScript and ActiveX execution is disabled or constrained to approved contexts |
 
+### 3.5 Restrict Administrative Privileges
 
+| Control Scope | Assertion |
+|---|---|
+| PAM coverage | All privileged accounts are managed under a PAM solution; coverage is complete |
+| Standing access elimination | No standing privileged accounts exist outside defined break-glass scope |
+| JIT attestation | Just-in-time privilege elevation is logged, time-bound, and ledger-committed |
 
-## Embedding Across VL Fibres
+### 3.6 Patch Operating Systems
 
-An embedding exists between vector-length-indexed spaces:
+| Control Scope | Assertion |
+|---|---|
+| OS patch currency | OS patches applied within defined SLA; evidence emitted per patch cycle |
+| EOL enforcement | No end-of-life operating systems in production; EOL assets are enumerated and scheduled for remediation |
+| Unsupported asset register | Unsupported assets are tracked, risk-accepted, and subject to compensating controls |
 
-```
+### 3.7 Multi-Factor Authentication
 
-ι : V(VL₁) → V(VL₂)
+| Control Scope | Assertion |
+|---|---|
+| Phishing-resistant MFA | FIDO2/hardware token MFA enforced for all internet-facing and privileged access |
+| Privileged coverage | All privileged accounts require phishing-resistant MFA; no exceptions without ledger-recorded approval |
+| Unprivileged coverage | MFA enforced for all standard user access to organisational systems and data |
 
-```
+### 3.8 Regular Backups
 
-Condition:
+| Control Scope | Assertion |
+|---|---|
+| RTO/RPO-bound | Recovery time and recovery point objectives are defined, documented, and asserted |
+| Restoration tested | Backup restoration is tested on a defined schedule; test results committed to ledger |
+| Integrity-chained | Backup integrity is cryptographically verified; tampering is detectable |
 
-```
+---
 
-VL₁ ≤ VL₂
+## 4. Evidence Model
 
-```
+All index assertions produce evidence committed to the SIRA/IĀTŌ append-only evidence ledger. Evidence is not assembled retrospectively for audits — it exists continuously as a ledger record.
 
-Invariant:
+| Property | Implementation |
+|---|---|
+| **Append-Only** | `UPDATE` and `DELETE` permissions revoked at schema level. Only `INSERT` permitted. |
+| **Hash-Chained** | Every entry embeds `SHA-256(preceding_entry)`. Chain integrity is independently verifiable. |
+| **Timestamped** | Every entry carries a cryptographically verified temporal marker. Timeline is forensically reliable. |
 
-```
+Evidence packages for IRAP assessors are structured as append-only ledger extracts — not ad-hoc document collections. Control implementation statements are machine-generated from asserted control states, not authored manually.
 
-O(ι(v)) = O(v)
+---
 
-```
+## 5. Framework Coverage
 
-Interpretation:
+| Framework | Coverage Basis |
+|---|---|
+| E8 ML3 | All eight strategies asserted at ML3; evidence structured for IRAP assessor consumption |
+| ISM | Controls mapped as enumerated, addressable assurance targets; each modelled as an observable state |
+| NZISM | Controls mapped at classification level appropriate to engagement scope |
+| DISP | Evidence structures consistent with ISM/IRAP same ledger, same schema, separate crosswalk layer |
+| APRA CPS 220 | Risk governance overlay; quantified residual exposure output structured for board and prudential reviewer consumption |
 
-Embedding is observationally inert; it preserves equivalence under projection.
+The full framework crosswalk is maintained in `docs/COMPLIANCE_CROSSWALK.csv`.
 
+---
 
+## 6. Scope
 
-## Refinement Structure
+| Dimension | Statement |
+|---|---|
+| **Authority** | No index entry constitutes decision-making authority |
+| **Scope** | Index coverage is bounded by declared framework obligations |
+| **Output nature** | Assertions are diagnostic and audit-ready; they do not substitute for registered assessor judgement |
+| **Governance requirement** | All outputs must be interpreted within the governing framework context |
 
-Refinement defines a simulation preorder:
+---
 
-```
+## 7. License and Academic Use Notice
 
-S1 ⊑ S2
+Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` at repository root.
 
-```
-
-Definition:
-
-```
-
-S2 → S2'  ⇒  ∃ S1' :
-S1 → S1' ∧ S1' ≈ S2'
-
-```
-
-Interpretation:
-
-Refinement is a closure condition over the transition structure under observation equivalence.
-
-
-
-## Bisimulation Structure
-
-Bisimulation is the symmetric closure of refinement:
-
-```
-
-R is bisimulation iff:
-S1 R S2 ⇒ S1 ≈ S2
-and transitions are mutually simulated
-
-```
-
-Interpretation:
-
-Bisimulation is an equilibrium relation over the transition quotient space.
-
-
-
-## Migration as Structural Reindexing
-
-Migration is treated as:
-
-```
-
-mig : S → S
-
-```
-
-Constraint:
-
-```
-
-O(mig(S)) = O(S)
-
-```
-
-Interpretation:
-
-Migration is not an operational transformation; it is a structure-preserving re-indexing over VL-fibred state.
-
-
-
-## Vector-State Integrity
-
-Vector state is subject to a strict atomicity condition:
-
-```
-
-VL-state is always complete at observation boundaries
-
-```
-
-Constraint:
-
-```
-
-No partial vector-state is observable under projection O
-
-```
-
-Interpretation:
-
-The vector state is treated as indivisible at the semantic boundary points.
-
-
-
-## Isolation Structure 
-
-Isolation is defined over partitioned state domains:
-
-```
-
-Iso(S) :=
-∀ i ≠ j :
-IPA_i ∩ IPA_j = ∅
-
-```
-
-Interpretation:
-
-Isolation is a property of disjointness in projection space, not of internal mechanism.
-
-
-
-## Correctness Predicate
-
-System correctness is defined as:
-
-```
-
-CORRECT(S) :=
-Iso(S)
-∧ VL-invariance
-∧ observation preservation
-∧ transition closure
-∧ embedding consistency
-
-```
-
-Interpretation:
-```
-Correctness is a structural property over the closed semantic object S.
-```
-
-
-## Transition Decomposition Principle
-
-All transitions preserve structure:
-
-```
-
-T preserves:
-
-* VL-fibre consistency
-* observation quotient
-* refinement closure
-
-```
-
-Constraint:
-
-```
-
-No transition introduces new semantic domains
-
-```
-
-
-
-## Microarchitectural Domain 
-
-A secondary domain is acknowledged:
-
-```
-
-M = ⟨ BTB, BHB, CACHE, PIPELINE ⟩
-
-```
-
-**Constraint:**
-
-```
-
-M is not part of S
-M is not controlled by T
-M is not observable via O
-
-```
-
-**Interpretation:**
-
-M exists only as a boundary condition preventing cross-state interference assumptions.
-
-The model defines:
-
-- a closed configuration space S
-- VL as a structural index, not a runtime variable
-- a labelled transition relation over S
-- an observation quotient O
-- refinement and bisimulation over equivalence classes
-- embedding between VL fibres as a structure preserving injection
-- migration as observationally inert reindexing
-
-
-This system is:
-
-- not an implementation model
-- not a hardware model
-- not a hypervisor specification
-- not an execution engine description
-
-It is a closed semantic notation system over a VL-indexed state space with observational quotienting and refinement structure.
-
-### References
-
-```
-Milner, Robin. Communication and Concurrency. Prentice Hall, 1989.
-
-Park, David. “Concurrency and Automata on Infinite Sequences.” Theoretical Computer Science, vol. 138, no. 2, 1982, pp. 167–183.
-
-Larsen, Kim G., and Arne Skou. “Bisimulation through Probabilistic Testing.” Information and Computation, vol. 94, no. 1, 1991, pp. 1–28.
-
-Milner, Robin. A Calculus of Communicating Systems. Springer, 1980.
-
-Hennessy, Matthew, and Robin Milner. “Algebraic Laws for Nondeterminism and Concurrency.” Journal of the ACM, vol. 32, no. 1, 1985, pp. 137–161.
-
-Winskel, Glynn. The Formal Semantics of Programming Languages: An Introduction. MIT Press, 1993.
-
-Plotkin, Gordon D. “A Structural Approach to Operational Semantics.” Aarhus University, 1981.
-
-Aspinall, David, and Lars Birkedal. “Type-Theoretic Foundations of Programming Languages.” In Handbook of Logic in Computer Science, vol. 5, Oxford University Press, 2000.
-```
+**Academic use:** The IĀTŌ codebase, index documentation, and associated artefacts must not be used to underpin coursework content or submitted as original work in any assessed academic context. This is a practitioner artefact. All analytical claims should be traced to their cited primary sources. See `notebooks/DISCLAIMER.md` for full permitted-use terms.

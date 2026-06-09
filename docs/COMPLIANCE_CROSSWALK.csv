@@ -1,0 +1,3 @@
+control_id,assertion,technical_parameter,expected_value,ism,nzism,e8_maturity,soc2_criteria,iso27001,apra_cps220,notes
+IATO-AC-012,MFA is enabled for all privileged accounts,accounts[].mfa_enabled,true for every account where accounts[].privileged is true,,,ML3,,,,No SCF source mapping is recorded in this repository for framework-specific control identifiers.
+IATO-AC-013,Privileged accounts do not have standing privileged access,accounts[].standing_privileged_access,false for every account where accounts[].privileged is true,,,ML3,,,,No SCF source mapping is recorded in this repository for framework-specific control identifiers.

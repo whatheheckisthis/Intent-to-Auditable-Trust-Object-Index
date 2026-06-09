@@ -1,0 +1,22 @@
+name: validate
+
+on:
+  pull_request:
+
+jobs:
+  regopy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install regopy
+        run: |
+          curl -sSL "https://files.pythonhosted.org/packages/f6/4f/db64d7bc89b31b0663f2aee85e5f66e7723a5f8e5b476fed49fa90d9f082/regopy-1.4.0-cp312-cp312-manylinux_2_34_x86_64.whl" \
+            -o /tmp/regopy-1.4.0-cp312-cp312-manylinux_2_34_x86_64.whl
+          pip install /tmp/regopy-1.4.0-cp312-cp312-manylinux_2_34_x86_64.whl --break-system-packages
+      - name: Run policy tests
+        run: python test/run_tests.py

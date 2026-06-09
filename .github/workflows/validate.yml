@@ -4,20 +4,25 @@ on:
   pull_request:
 
 jobs:
-  conftest:
+  opa:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install conftest
+      - name: Install OPA
         env:
-          CONFTEST_VERSION: 0.56.0
+          OPA_VERSION: 0.68.0
         run: |
-          curl -sSL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" -o conftest.tar.gz
-          tar -xzf conftest.tar.gz conftest
-          sudo mv conftest /usr/local/bin/conftest
-      - name: Verify Rego policies
-        run: conftest verify ./policies/... ./test/unit/...
+          set -euo pipefail
+          if curl -fsSL "https://openpolicyagent.org/downloads/v${OPA_VERSION}/opa_linux_amd64_static" -o opa; then
+            chmod +x opa
+            sudo mv opa /usr/local/bin/opa
+          else
+            npm install -g @open-policy-agent/opa
+          fi
+          opa version
+      - name: Run Rego unit tests
+        run: opa test ./policies/ac ./test/unit
       - name: Run mutation fixtures
         run: |
           python3 - <<'PY'
@@ -31,21 +36,22 @@ jobs:
           for case in manifest:
               policy_stem = Path(case['policy']).stem.lower().replace('-', '_')
               control_parts = policy_stem.split('_')
-              namespace = f"iato.{control_parts[1]}.{policy_stem}"
+              query = f"data.iato.{control_parts[1]}.{policy_stem}.deny"
               output = subprocess.check_output([
-                  'conftest',
-                  'test',
-                  case['fixture'],
-                  '--policy',
-                  case['policy'],
-                  '--namespace',
-                  namespace,
-                  '--output',
+                  'opa',
+                  'eval',
+                  '--format',
                   'json',
+                  '--input',
+                  case['fixture'],
+                  '--data',
+                  case['policy'],
+                  query,
               ], text=True)
               data = json.loads(output)
-              failures_count = sum(len(result.get('failures', [])) for result in data)
-              actual = 'FAIL' if failures_count else 'PASS'
+              expressions = data.get('result', [{}])[0].get('expressions', [])
+              deny = expressions[0].get('value', []) if expressions else []
+              actual = 'FAIL' if deny else 'PASS'
               if actual != case['expected']:
                   failures.append(f"{case['fixture']} expected {case['expected']} got {actual}")
           if failures:

@@ -3,24 +3,24 @@
 ## 1. Index Overview
 
 The process is read-only and does not perform remediation. It operates as part of the practice and interacts with client environments using least-privilege access. It retrieves configuration state through read-only API calls, evaluates that state against predefined Rego policies, and records the resulting evidence and evaluation outcome in a write-once-read-many (WORM) ledger using cryptographic hashing. Its scope is observation, evaluation, and logging. It does not modify, create, or delete resources in the source environment.
+The process ends when the evidence and control evaluation, e.g., `PASS`/`FAIL` or `CONTROL_FAILED` are written to the WORM storage system. After this point, there is no further interaction with the client environment. It does not execute corrective actions and does not perform remediation. The output is limited to recorded evidence and evaluation results.
 
-The process ends when the evidence and control evaluation (e.g., PASS/FAIL or CONTROL_FAILED) are written to the WORM storage system. After this point, there is no further interaction with the client environment. It does not execute corrective actions and does not perform remediation. The output is limited to recorded evidence and evaluation results.
+Remediation is performed manually and outside the process. The practitioner reviews the `CONTROL_FAILED` result, traces it to the underlying infrastructure configuration, and applies changes using Terraform, PowerShell scripts, or IAM policy updates. This is the only point where the client environment is modified, and it is controlled through change-management procedures.
+From a controls mapping perspective, the process aligns to logging, monitoring, and evidence collection requirements in frameworks such as NZISM, ISM, Essential Eight Maturity Level 3. It does not implement corrective controls. Corrective controls are implemented through change management procedures. For IRAP assessment, the process provides machine-verifiable evidence of control state. 
 
-Remediation is performed manually and outside the process. The practitioner reviews the CONTROL_FAILED result, traces it to the underlying infrastructure configuration, and applies changes using Terraform, PowerShell scripts, or IAM policy updates. This is the only point where the client environment is modified, and it is controlled through change-management procedures.
+Remediation evidence is provided through change history and approved change records. Access is restricted to read-only service principals or IAM roles. No administrative credentials are used. Permissions are limited to configuration retrieval and state verification. This ensures the process cannot modify production resources. Remediation remains separate and is performed through controlled engineering procedures.
 
-From a controls mapping perspective, the process aligns to logging, monitoring, and evidence collection requirements in frameworks such as NZISM, ISM, E8 ML3, DISP, and APRA CPS 220. It does not implement corrective controls. Corrective controls are implemented through change-management procedures. For IRAP assessment, the process provides machine-verifiable evidence of control state. Remediation evidence is provided through infrastructure-as-code change history and approved change records.
 
-Access is restricted to read-only service principals or IAM roles. No administrative credentials are used. Permissions are limited to configuration retrieval and state verification. This ensures the process cannot modify production resources. Remediation remains separate and is performed through controlled engineering procedures.
-.
-
-## Delivery Posture
+### 1.1 Delivery Posture
 | Stage                | Component                     | Mechanism                                         | Cloud Services / Tools                                                            | Data State                                | Security Model                                                    | Output / Control Outcome                    |
 | -------------------- | ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------- |
-| 1. Evidence Emission | Configuration State Retrieval | Scheduled or event-driven read-only API execution | AWS EventBridge, Azure Logic Apps, AWS Lambda, Azure Functions, AWS IAM, Azure AD | Raw JSON tenant configuration snapshot    | Least-privilege read-only identity (IAM role / service principal) | Structured, immutable configuration dataset |
+| 1. Evidence Emission | Configuration State Retrieval | Scheduled or event-driven read-only API execution | AWS EventBridge, Azure Logic Apps, AWS Lambda, Azure Functions, AWS IAM, Azure AD | Raw JSON tenant configuration snapshot    | Least-privilege read-only identity (IAM role/service principal) | Structured, immutable configuration dataset |
 | 2. Ingestion Model   | Identity Trust Boundary       | Cross-account / cross-tenant trust establishment  | IAM trust policies, Azure service principals, external ID constraints             | Authenticated execution context           | Scoped read-only access boundary                                  | Secure evaluation channel established       |
 | 3. Evaluation Engine | Policy-as-Code Processing     | JSON evaluation against Rego / schema definitions | Open Policy Agent (OPA), Rego, JSON Schema                                        | Compliance evaluation result (true/false) | Deterministic policy enforcement (stateless evaluation)           | Control pass/fail decision output           |
 | 4. Runtime Context   | Execution Environment         | Serverless in-memory processing                   | AWS Lambda, Azure Functions                                                       | Ephemeral payload processing              | No persistence, no side effects                                   | Isolated evaluation execution               |
 
+
+---
 
 | Stage                | Component              | Mechanism                                                  | Cloud Services / Tools                                                  | Data State                   | Security Model                          | Output / Control Outcome                          |
 | -------------------- | ---------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------- | --------------------------------------- | ------------------------------------------------- |
@@ -33,7 +33,7 @@ Access is restricted to read-only service principals or IAM roles. No administra
 >The intentional constraint is not a barrier but the point of engagement. The practitioner shall trace the immutable log output to its origin within the client environment and shall apply appropriate change-management controls via infrastructure remediation (Terraform or cloud consoles) to remediate the control gap, restore compliance with the applicable policy, standard, or control objective, and transition the corresponding ledger entry from red to green.
 
 
-### E8 ML3 — ASD Essential Eight Maturity Level 3
+### 1.2 E8 ML3 — ASD Essential Eight Maturity Level 3
 
 ML3 is the baseline floor for all AU government and regulated enterprise engagements.
 
@@ -181,9 +181,6 @@ The full framework crosswalk is maintained in `docs/COMPLIANCE_CROSSWALK.csv`.
 | **Output nature** | Assertions are diagnostic and audit-ready; they do not substitute for registered assessor judgement |
 | **Governance requirement** | All outputs must be interpreted within the governing framework context |
 
+---
 
-## 7. License and Academic Use Notice
-
-Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` at repository root.
-
-**Academic use:** The IĀTŌ codebase, index documentation, and associated artefacts must not be used to underpin coursework content or submitted as original work in any assessed academic context. This is a practitioner artefact. All analytical claims should be traced to their cited primary sources. See `notebooks/DISCLAIMER.md` for full permitted-use terms.
+***The IĀTŌ codebase, index documentation, and associated artefacts must not be used to underpin coursework content or submitted as original work in any assessed academic context. This is a practitioner artefact. All analytical claims should be traced to their cited primary sources. See `notebooks/DISCLAIMER.md` for full permitted-use terms.***

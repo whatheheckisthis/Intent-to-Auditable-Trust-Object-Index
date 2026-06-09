@@ -4,57 +4,16 @@ on:
   pull_request:
 
 jobs:
-  opa:
+  regopy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install OPA
-        env:
-          OPA_VERSION: 0.68.0
-        run: |
-          set -euo pipefail
-          if curl -fsSL "https://openpolicyagent.org/downloads/v${OPA_VERSION}/opa_linux_amd64_static" -o opa; then
-            chmod +x opa
-            sudo mv opa /usr/local/bin/opa
-          else
-            npm install -g @open-policy-agent/opa
-          fi
-          opa version
-      - name: Run Rego unit tests
-        run: opa test ./policies/ac ./test/unit
-      - name: Run mutation fixtures
-        run: |
-          python3 - <<'PY'
-          import json
-          import subprocess
-          import sys
-          from pathlib import Path
-
-          manifest = json.loads(Path('test/mutations/mutation-manifest.json').read_text())
-          failures = []
-          for case in manifest:
-              policy_stem = Path(case['policy']).stem.lower().replace('-', '_')
-              control_parts = policy_stem.split('_')
-              query = f"data.iato.{control_parts[1]}.{policy_stem}.deny"
-              output = subprocess.check_output([
-                  'opa',
-                  'eval',
-                  '--format',
-                  'json',
-                  '--input',
-                  case['fixture'],
-                  '--data',
-                  case['policy'],
-                  query,
-              ], text=True)
-              data = json.loads(output)
-              expressions = data.get('result', [{}])[0].get('expressions', [])
-              deny = expressions[0].get('value', []) if expressions else []
-              actual = 'FAIL' if deny else 'PASS'
-              if actual != case['expected']:
-                  failures.append(f"{case['fixture']} expected {case['expected']} got {actual}")
-          if failures:
-              print('\n'.join(failures), file=sys.stderr)
-              sys.exit(1)
-          PY
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install regopy
+        run: python -m pip install regopy==1.4.0 --break-system-packages
+      - name: Run policy tests
+        run: python test/run_tests.py

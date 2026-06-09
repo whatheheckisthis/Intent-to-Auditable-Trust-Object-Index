@@ -1,68 +1,85 @@
 # IĀTŌ — Intent-to-Auditable-Trust-Object
 
-## 1. Index Overview
 
-The process is read-only and does not perform remediation. The process operates within practitioner-controlled assurance activity and interacts with client environments through least-privilege access. Configuration state is retrieved through read-only API calls, evaluated against predefined Rego policies, and recorded with the resulting evidence and evaluation outcome in a write-once-read-many (WORM) ledger using cryptographic hashing. Scope is limited to observation, evaluation, and logging. Resources in the source environment are not modified, created, or deleted.
+## Overview
 
-The process ends when evidence and control evaluation outcomes, including `PASS`/`FAIL` or `CONTROL_FAILED`, are written to the WORM storage system. After ledger commit, there is no further interaction with the client environment. Corrective actions are not executed by the process. Remediation is not performed by the process. Output is limited to recorded evidence and evaluation results.
+IĀTŌ is a read-only compliance assertion pipeline. Configuration state is retrieved from cloud tenants through least-privilege API calls, evaluated against Rego policies, and committed as cryptographically hashed evidence to a write-once-read-many (WORM) ledger. The pipeline produces audit-ready artefacts for IRAP assessors and regulated enterprise engagements.
 
-Remediation is performed manually and outside the process. The practitioner role reviews the `CONTROL_FAILED` result, traces it to the underlying infrastructure configuration, and applies changes using Terraform, PowerShell scripts, or IAM policy updates. Client environment modification occurs only through this remediation activity and is controlled through change-management procedures.
+The process ends at ledger commit. Remediation is out of scope. No resources in the source environment are modified, created, or deleted by the pipeline.
 
-From a controls mapping perspective, the process aligns to logging, monitoring, and evidence collection requirements in frameworks such as NZISM, ISM, and Essential Eight Maturity Level 3. Corrective controls are not implemented by the process. Corrective controls are implemented through change-management procedures. For IRAP assessment, the process provides machine-verifiable evidence of control state.
+## Pipeline Stages
 
-Remediation evidence is provided through change history and approved change records. Access is restricted to read-only service principals or IAM roles. Administrative credentials are not used. Permissions are limited to configuration retrieval and state verification. The process cannot modify production resources. Remediation remains separate and is performed through controlled engineering procedures.
+| Stage | Component | Output |
+|---|---|---|
+| 1. Evidence Emission | Read-only API collectors (Lambda / Functions) | Raw JSON tenant configuration snapshot |
+| 2. Ingestion | Cross-account / cross-tenant trust boundary | Authenticated evaluation context |
+| 3. Evaluation | OPA / Rego policy-as-code assertion engine | `PASS` / `FAIL` per control ID |
+| 4. Runtime | Serverless ephemeral execution | Isolated, stateless evaluation |
+| 5. Ledger Commit | SHA-256 hash chain → WORM store | Immutable, tamper-evident audit record |
+| 6. Remediation | Manual — Terraform / PowerShell / change management | Restored compliance state (out of pipeline scope) |
 
-### 1.1 Delivery Posture
-| Stage                | Component                     | Mechanism                                         | Cloud Services / Tools                                                            | Data State                                | Security Model                                                  | Output / Control Outcome                    |
-| -------------------- | ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------- | ------------------------------------------- |
-| 1. Evidence Emission | Configuration State Retrieval | Scheduled or event-driven read-only API execution | AWS EventBridge, Azure Logic Apps, AWS Lambda, Azure Functions, AWS IAM, Azure AD | Raw JSON tenant configuration snapshot    | Least-privilege read-only identity (IAM role/service principal) | Structured, immutable configuration dataset |
-| 2. Ingestion Model   | Identity Trust Boundary       | Cross-account / cross-tenant trust establishment  | IAM trust policies, Azure service principals, external ID constraints             | Authenticated execution context           | Scoped read-only access boundary                                | Secure evaluation channel established       |
-| 3. Evaluation Engine | Policy-as-Code Processing     | JSON evaluation against Rego / schema definitions | Open Policy Agent (OPA), Rego, JSON Schema                                        | Compliance evaluation result (true/false) | Deterministic policy enforcement (stateless evaluation)         | Control pass/fail decision output           |
-| 4. Runtime Context   | Execution Environment         | Serverless in-memory processing                   | AWS Lambda, Azure Functions                                                       | Ephemeral payload processing              | No persistence, no side effects                                 | Isolated evaluation execution               |
+## Repository Structure
 
-| Stage                | Component              | Mechanism                                                  | Cloud Services / Tools                                                  | Data State                   | Security Model                          | Output / Control Outcome                          |
-| -------------------- | ---------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------- | --------------------------------------- | ------------------------------------------------- |
-| 5. Ledger Commit     | Evidence Finalization  | Cryptographic hashing of evidence + evaluation + timestamp | SHA-256, AWS QLDB, AWS S3 Object Lock (WORM), Azure Confidential Ledger | Immutable audit record       | Append-only, tamper-evident storage     | Verifiable compliance artifact                    |
-| 6. Integrity Model   | Hash Chaining          | Sequential cryptographic linkage of records                | SHA-256 hash chain                                                      | Historical ledger continuity | Tamper detection via chain break        | Integrity record for ledger continuity            |
-| 7. Output State      | Compliance Ledger      | Final persisted record in immutable store                  | QLDB / WORM / ledger databases                                          | Immutable compliance history | Externalized trust boundary             | Audit-ready evidence trail                        |
-| 8. Remediation       | Control Gap Resolution | Infrastructure correction workflows                        | Terraform, PowerShell, CI/CD pipelines, cloud consoles                  | Drift correction actions     | Human-controlled or governed automation | Restored compliance state and closed control gaps |
+```
+iato-root/
+├── .github/
+│   └── workflows/
+│       ├── validate.yml          # PR validation: regopy mutation fixture runner
+│       └── ledger-commit.yml     # Merge-to-main: hash results and append to immutable store
+├── docs/
+│   └── COMPLIANCE_CROSSWALK.csv  # Assertion library and multi-framework mapping table
+├── collectors/
+│   ├── aws/
+│   │   └── iam_snapshot.py       # Read-only boto3: IAM users, MFA status, password policy
+│   └── azure/
+│       └── entra_snapshot.py     # Read-only MS Graph: users, MFA registration, conditional access
+├── policies/
+│   ├── ac/                       # Access Control domain
+│   │   ├── IATO-AC-012.rego      # MFA enforcement — privileged accounts
+│   │   └── IATO-AC-013.rego      # Standing access elimination — PIM/JIT
+│   ├── ai/                       # AI Governance domain
+│   └── bk/                       # Backup and Recovery domain
+├── test/
+│   ├── mutations/
+│   │   ├── mutation-manifest.json
+│   │   └── fixtures/             # PASS and FAIL input fixtures per policy
+│   └── unit/                     # Rego unit test files (_test.rego)
+├── ledger/
+│   ├── scripts/
+│   │   ├── hash_result.py        # SHA-256 canonical JSON hashing
+│   │   └── append_ledger.py      # Append-only write to S3 Object Lock or Azure Immutable Blob
+│   └── storage/
+│       └── README.md             # Backend configuration reference
+└── requirements.txt
+```
 
->The intentional constraint defines the engagement boundary. The practitioner role traces immutable log output to its origin within the client environment and applies appropriate change-management controls through infrastructure remediation, including Terraform or cloud consoles, to remediate the control gap, restore compliance with the applicable policy, standard, or control objective, and transition the corresponding ledger entry from red to green.
+## Control ID Schema
 
-### 1.2 E8 ML3 — ASD Essential Eight Maturity Level 3
+```
+Format:  IATO-{DOMAIN}-{SEQ}
+Example: IATO-AC-012
 
-ML3 is the baseline requirement for AU government and regulated enterprise engagements.
+IATO  = namespace
+AC    = domain code
+012   = zero-padded sequence number
+```
 
-| Strategy | ML3 Assertion Scope |
+The control ID is a primary key. Rego policies reference IATO IDs exclusively. External framework identifiers (ISM, NZISM, SOC 2, etc.) are maintained in `docs/COMPLIANCE_CROSSWALK.csv` as satisfier columns. There is no coupling between policy code and external framework numbering.
+
+### Domain Registry
+
+| Code | Domain |
 |---|---|
-| Application control | Allowlist enforcement, scope coverage, exception governance |
-| Patch applications | Patch currency SLA, automated detection, gap evidence |
-| Configure MS Office macros | Macro signing, sandbox enforcement, user override controls |
-| User application hardening | Browser plugin governance, JScript/ActiveX control surface |
-| Restrict admin privileges | PAM coverage, standing access elimination, JIT attestation |
-| Patch operating systems | OS patch currency, EOL enforcement, unsupported asset register |
-| MFA | Phishing-resistant MFA, privileged and unprivileged coverage |
-| Regular backups | RTO/RPO-bound, restoration tested, integrity-chained |
+| `AC` | Access Control |
+| `BK` | Backup and Recovery |
+| `CM` | Configuration Management |
+| `IM` | Incident Management |
+| `SC` | Supply Chain Integrity |
+| `AI` | AI Governance / LLM Safety |
 
-All eight strategies are asserted at ML3. Evidence is structured for IRAP assessor consumption and committed to the append-only evidence ledger as artefacts.
+## Crosswalk Model
 
-## 2. Index Structure
-
-### 2.1 Control Entry Model
-
-Each entry in the IĀTŌ index is a single, self-contained assurance target. No control exists as a prose description alone. Every entry specifies the following fields.
-
-| Field | Definition |
-|---|---|
-| `control_id` | Unique enumerated identifier within the index |
-| `title` | Plain-language control name |
-| `assertion` | Machine-evaluable statement of required control state |
-| `evidence` | Defined artefact class and source; committed to ledger on assertion |
-| `frameworks` | Every framework identifier this entry satisfies |
-
-### 2.2 Crosswalk Model
-
-Controls are not maintained as per-framework silos. A single index entry satisfies obligations across multiple frameworks simultaneously. Evidence is produced once and applies to every framework tag the entry carries.
+A single index entry satisfies obligations across multiple frameworks simultaneously. Evidence is produced once and applies to every framework tag the entry carries.
 
 ```yaml
 control_id: IATO-AC-012
@@ -70,109 +87,68 @@ title:      Privileged Access — Standing Access Elimination
 assertion:  no standing privileged accounts outside defined break-glass scope
 evidence:   IAM role inventory extract, last-reviewed timestamp, exception register
 frameworks:
-  - NZISM:        AC-7
-  - ISM:          ISM-1175, ISM-1507
-  - E8 ML3:       Restrict Administrative Privileges — ML3
+  - NZISM:   AC-7
+  - ISM:     ISM-1175, ISM-1507
+  - E8 ML3:  Restrict Administrative Privileges — ML3
 ```
 
-Duplicate evidence production is eliminated. A single auditable trail is provided for the framework assurance target applicable to an engagement.
+The full crosswalk is maintained in [`docs/COMPLIANCE_CROSSWALK.csv`](docs/COMPLIANCE_CROSSWALK.csv).
 
-## 3. E8 ML3 Control Domains
-
-The following index domains map directly to the eight Essential Eight strategies at ML3. Each domain entry is an assertion against observable control state, not a documentation claim.
-
-### 3.1 Application Control
-
-| Control Scope | Assertion |
-|---|---|
-| Allowlist enforcement | Only explicitly permitted executables run; all others are blocked by policy |
-| Scope coverage | Allowlist coverage extends to all user workstations, servers, and internet-facing systems |
-| Exception governance | All allowlist exceptions are time-bound, approved, and ledger-recorded |
-
-### 3.2 Patch Applications
-
-| Control Scope | Assertion |
-|---|---|
-| Patch currency SLA | Critical patches applied within defined SLA; evidence emitted per patch cycle |
-| Automated detection | Vulnerability scanning runs on schedule; results committed to ledger |
-| Gap evidence | Unpatched assets are enumerated, risk-accepted, and tracked in the exception register |
-
-### 3.3 Configure Microsoft Office Macros
-
-| Control Scope | Assertion |
-|---|---|
-| Macro signing | Only macros signed by a trusted publisher execute; unsigned macros are blocked |
-| Sandbox enforcement | Macro execution is isolated; network and filesystem access is constrained |
-| User override controls | User accounts cannot modify macro execution policy; override attempts are logged |
-
-### 3.4 User Application Hardening
-
-| Control Scope | Assertion |
-|---|---|
-| Browser plugin governance | Only explicitly approved plugins are permitted; unapproved plugins are blocked |
-| JScript/ActiveX control surface | JScript and ActiveX execution is disabled or constrained to approved contexts |
-
-### 3.5 Restrict Administrative Privileges
-
-| Control Scope | Assertion |
-|---|---|
-| PAM coverage | All privileged accounts are managed under a PAM solution; coverage is complete |
-| Standing access elimination | No standing privileged accounts exist outside defined break-glass scope |
-| JIT attestation | Just-in-time privilege elevation is logged, time-bound, and ledger-committed |
-
-### 3.6 Patch Operating Systems
-
-| Control Scope | Assertion |
-|---|---|
-| OS patch currency | OS patches applied within defined SLA; evidence emitted per patch cycle |
-| EOL enforcement | No end-of-life operating systems in production; EOL assets are enumerated and scheduled for remediation |
-| Unsupported asset register | Unsupported assets are tracked, risk-accepted, and subject to compensating controls |
-
-### 3.7 Multi-Factor Authentication
-
-| Control Scope | Assertion |
-|---|---|
-| Phishing-resistant MFA | FIDO2/hardware token MFA enforced for all internet-facing and privileged access |
-| Privileged coverage | All privileged accounts require phishing-resistant MFA; no exceptions without ledger-recorded approval |
-| Unprivileged coverage | MFA enforced for all standard user access to organisational systems and data |
-
-### 3.8 Regular Backups
-
-| Control Scope | Assertion |
-|---|---|
-| RTO/RPO-bound | Recovery time and recovery point objectives are defined, documented, and asserted |
-| Restoration tested | Backup restoration is tested on a defined schedule; test results committed to ledger |
-| Integrity-chained | Backup integrity is cryptographically verified; tampering is detectable |
-
-## 4. Evidence Model
-
-All index assertions produce evidence committed to the SIRA/IĀTŌ append-only evidence ledger. Evidence is not assembled retrospectively for audits. Evidence exists continuously as a ledger record.
+## Evidence Model
 
 | Property | Implementation |
 |---|---|
 | **Append-Only** | `UPDATE` and `DELETE` permissions revoked at schema level. Only `INSERT` permitted. |
 | **Hash-Chained** | Every entry embeds `SHA-256(preceding_entry)`. Chain integrity is independently verifiable. |
-| **Timestamped** | Every entry carries a cryptographically verified temporal marker. Timeline is forensically reliable. |
+| **Timestamped** | Every entry carries a cryptographically verified temporal marker. |
 
-Evidence packages for IRAP assessors are structured as append-only ledger extracts, not ad-hoc document collections. Control implementation statements are machine-generated from asserted control states, not authored manually.
+Evidence packages for IRAP assessors are structured as append-only ledger extracts. Control implementation statements are machine-generated from asserted control states.
 
-## 5. Framework Coverage
+## CI/CD
+
+### PR Validation — `validate.yml`
+
+Trigger: `pull_request`
+
+Installs `regopy==1.4.0` via direct wheel fetch from `files.pythonhosted.org`. Executes `test/run_tests.py` against `test/mutations/mutation-manifest.json`. Fails the PR if any fixture produces an unexpected result.
+
+> `conftest` and the OPA static binary are not used. The proxy environment blocks GitHub release artifact fetches. `regopy` is the confirmed Rego evaluation runtime for this pipeline. `test/unit/*_test.rego` files are retained as artefacts for environments where a native OPA binary is available.
+
+### Ledger Commit — `ledger-commit.yml`
+
+Trigger: `push` to `main`
+
+Runs `ledger/scripts/hash_result.py` then `ledger/scripts/append_ledger.py` for each JSON file in the configured `results/` directory. Backend target is set via `LEDGER_BACKEND` and `LEDGER_TARGET` environment variables (GitHub Actions secrets). Supported backends: `s3_object_lock`, `azure_immutable_blob`.
+
+## Framework Coverage
 
 | Framework | Coverage Basis |
 |---|---|
 | E8 ML3 | All eight strategies asserted at ML3; evidence structured for IRAP assessor consumption |
-| ISM | Controls mapped as enumerated, addressable assurance targets; each modelled as an observable state |
+| ISM | Controls mapped as enumerated, addressable assurance targets modelled as observable states |
 | NZISM | Controls mapped at classification level appropriate to engagement scope |
 
-The full framework crosswalk is maintained in `docs/COMPLIANCE_CROSSWALK.csv`.
+ML3 is the baseline floor for all AU government and regulated enterprise engagements.
 
-## 6. Scope
+## Scaling Model
+
+Scale is achieved by expanding the assertion library.
+
+| Action | Implementation |
+|---|---|
+| Add a domain | Add domain code to registry; add Rego policies under `policies/<domain>/` |
+| Add a framework | Add a column to `docs/COMPLIANCE_CROSSWALK.csv` |
+| Add a collector | Add a read-only script under `collectors/<platform>/` |
+
+## Scope
 
 | Dimension | Statement |
 |---|---|
 | **Authority** | No index entry constitutes decision-making authority |
 | **Scope** | Index coverage is bounded by declared framework obligations |
 | **Output nature** | Assertions are diagnostic and audit-ready; they do not substitute for registered assessor judgement |
-| **Governance requirement** | All outputs must be interpreted within the governing framework context |
+| **Governance** | All outputs must be interpreted within the governing framework context |
 
-***The IĀTŌ codebase, index documentation, and associated artefacts must not be used to underpin coursework content or submitted as original work in any assessed academic context. This is a practitioner artefact. All analytical claims should be traced to their cited primary sources. See `notebooks/DISCLAIMER.md` for full permitted-use terms.***
+---
+
+*The IĀTŌ codebase, index documentation, and associated artefacts must not be used to underpin coursework content or submitted as original work in any assessed academic context. This is a practitioner artefact. All analytical claims must be traced to their cited primary sources. See `notebooks/DISCLAIMER.md` for full permitted-use terms.*

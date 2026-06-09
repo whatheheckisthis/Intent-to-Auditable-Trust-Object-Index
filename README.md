@@ -2,17 +2,36 @@
 
 ## 1. Index Overview
 
-Conventional control registers are document artefacts maintained manually, assessed periodically, and structurally incapable of producing machine evidence. When an auditor or IRAP assessor requests evidence of control implementation, the response is typically a collection of screenshots, policy documents, and prose attestations assembled after the fact.
+The process is read-only and does not perform remediation. It operates as part of the practice and interacts with client environments using least-privilege access. It retrieves configuration state through read-only API calls, evaluates that state against predefined Rego policies, and records the resulting evidence and evaluation outcome in a write-once-read-many (WORM) ledger using cryptographic hashing. Its scope is observation, evaluation, and logging. It does not modify, create, or delete resources in the source environment.
 
-IĀTŌ replaces this model with a closed control index.
+The process ends when the evidence and control evaluation (e.g., PASS/FAIL or CONTROL_FAILED) are written to the WORM storage system. After this point, there is no further interaction with the client environment. It does not execute corrective actions and does not perform remediation. The output is limited to recorded evidence and evaluation results.
 
-Every security obligation across NZISM, ISM, E8 ML3, DISP, and APRA CPS 220 is represented as a single enumerated entry in the index. Each entry carries a defined assertion, a specified evidence artefact class, and a crosswalk to every framework identifier it satisfies. Control coverage is not claimed; it is asserted against observable state and committed to an immutable evidence ledger.
+Remediation is performed manually and outside the process. The practitioner reviews the CONTROL_FAILED result, traces it to the underlying infrastructure configuration, and applies changes using Terraform, PowerShell scripts, or IAM policy updates. This is the only point where the client environment is modified, and it is controlled through change-management procedures.
 
-The index operates as the taxonomy of the SIRA/IĀTŌ dual assurance architecture. 
+From a controls mapping perspective, the process aligns to logging, monitoring, and evidence collection requirements in frameworks such as NZISM, ISM, E8 ML3, DISP, and APRA CPS 220. It does not implement corrective controls. Corrective controls are implemented through change-management procedures. For IRAP assessment, the process provides machine-verifiable evidence of control state. Remediation evidence is provided through infrastructure-as-code change history and approved change records.
 
-SIRA produces quantified risk outputs from ledger observations. 
+Access is restricted to read-only service principals or IAM roles. No administrative credentials are used. Permissions are limited to configuration retrieval and state verification. This ensures the process cannot modify production resources. Remediation remains separate and is performed through controlled engineering procedures.
+.
 
-Defines what is observed, how it is asserted, and what constitutes valid evidence.
+## Delivery Posture
+| Stage                | Component                     | Mechanism                                         | Cloud Services / Tools                                                            | Data State                                | Security Model                                                    | Output / Control Outcome                    |
+| -------------------- | ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------- |
+| 1. Evidence Emission | Configuration State Retrieval | Scheduled or event-driven read-only API execution | AWS EventBridge, Azure Logic Apps, AWS Lambda, Azure Functions, AWS IAM, Azure AD | Raw JSON tenant configuration snapshot    | Least-privilege read-only identity (IAM role / service principal) | Structured, immutable configuration dataset |
+| 2. Ingestion Model   | Identity Trust Boundary       | Cross-account / cross-tenant trust establishment  | IAM trust policies, Azure service principals, external ID constraints             | Authenticated execution context           | Scoped read-only access boundary                                  | Secure evaluation channel established       |
+| 3. Evaluation Engine | Policy-as-Code Processing     | JSON evaluation against Rego / schema definitions | Open Policy Agent (OPA), Rego, JSON Schema                                        | Compliance evaluation result (true/false) | Deterministic policy enforcement (stateless evaluation)           | Control pass/fail decision output           |
+| 4. Runtime Context   | Execution Environment         | Serverless in-memory processing                   | AWS Lambda, Azure Functions                                                       | Ephemeral payload processing              | No persistence, no side effects                                   | Isolated evaluation execution               |
+
+
+| Stage                | Component              | Mechanism                                                  | Cloud Services / Tools                                                  | Data State                   | Security Model                          | Output / Control Outcome                          |
+| -------------------- | ---------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------- | --------------------------------------- | ------------------------------------------------- |
+| 5. Ledger Commit     | Evidence Finalization  | Cryptographic hashing of evidence + evaluation + timestamp | SHA-256, AWS QLDB, AWS S3 Object Lock (WORM), Azure Confidential Ledger | Immutable audit record       | Append-only, tamper-evident storage     | Verifiable compliance artifact                    |
+| 6. Integrity Model   | Hash Chaining          | Sequential cryptographic linkage of records                | SHA-256 hash chain                                                      | Historical ledger continuity | Tamper detection via chain break        | Forensic integrity guarantee                      |
+| 7. Output State      | Compliance Ledger      | Final persisted record in immutable store                  | QLDB / WORM / ledger databases                                          | Immutable compliance history | Externalized trust boundary             | Audit-ready evidence trail                        |
+| 8. Remediation  | Control Gap Resolution | Infrastructure correction workflows                        | Terraform, PowerShell, CI/CD pipelines, cloud consoles                  | Drift correction actions     | Human-controlled or governed automation | Restored compliance state and closed control gaps |
+
+
+>The intentional constraint is not a barrier but the point of engagement. The practitioner shall trace the immutable log output to its origin within the client environment and shall apply appropriate change-management controls via infrastructure remediation (Terraform or cloud consoles) to remediate the control gap, restore compliance with the applicable policy, standard, or control objective, and transition the corresponding ledger entry from red to green.
+
 
 ### E8 ML3 — ASD Essential Eight Maturity Level 3
 
@@ -31,7 +50,6 @@ ML3 is the baseline floor for all AU government and regulated enterprise engagem
 
 All eight strategies are asserted at ML3. Evidence is structured for direct IRAP assessor consumption and committed to the append only evidence ledger as artefacts.
 
----
 
 ## 2. Index Structure
 
@@ -60,13 +78,9 @@ frameworks:
   - NZISM:        AC-7
   - ISM:          ISM-1175, ISM-1507
   - E8 ML3:       Restrict Administrative Privileges — ML3
-  - DISP:         ICT-04
-  - APRA CPS 220: ORM-3.2 (operational risk control)
 ```
 
 This eliminates duplicate evidence production and provides a single auditable trail regardless of which framework is the assurance target for a given engagement.
-
----
 
 ## 3. E8 ML3 Control Domains
 
@@ -135,8 +149,6 @@ The following index domains map directly to the eight Essential Eight strategies
 | Restoration tested | Backup restoration is tested on a defined schedule; test results committed to ledger |
 | Integrity-chained | Backup integrity is cryptographically verified; tampering is detectable |
 
----
-
 ## 4. Evidence Model
 
 All index assertions produce evidence committed to the SIRA/IĀTŌ append-only evidence ledger. Evidence is not assembled retrospectively for audits — it exists continuously as a ledger record.
@@ -149,8 +161,6 @@ All index assertions produce evidence committed to the SIRA/IĀTŌ append-only e
 
 Evidence packages for IRAP assessors are structured as append-only ledger extracts — not ad-hoc document collections. Control implementation statements are machine-generated from asserted control states, not authored manually.
 
----
-
 ## 5. Framework Coverage
 
 | Framework | Coverage Basis |
@@ -158,12 +168,9 @@ Evidence packages for IRAP assessors are structured as append-only ledger extrac
 | E8 ML3 | All eight strategies asserted at ML3; evidence structured for IRAP assessor consumption |
 | ISM | Controls mapped as enumerated, addressable assurance targets; each modelled as an observable state |
 | NZISM | Controls mapped at classification level appropriate to engagement scope |
-| DISP | Evidence structures consistent with ISM/IRAP same ledger, same schema, separate crosswalk layer |
-| APRA CPS 220 | Risk governance overlay; quantified residual exposure output structured for board and prudential reviewer consumption |
+
 
 The full framework crosswalk is maintained in `docs/COMPLIANCE_CROSSWALK.csv`.
-
----
 
 ## 6. Scope
 
@@ -174,7 +181,6 @@ The full framework crosswalk is maintained in `docs/COMPLIANCE_CROSSWALK.csv`.
 | **Output nature** | Assertions are diagnostic and audit-ready; they do not substitute for registered assessor judgement |
 | **Governance requirement** | All outputs must be interpreted within the governing framework context |
 
----
 
 ## 7. License and Academic Use Notice
 

@@ -1,0 +1,32 @@
+name: ledger-commit
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ledger:
+    runs-on: ubuntu-latest
+    env:
+      RESULTS_DIR: ${{ vars.RESULTS_DIR || 'results' }}
+      LEDGER_BACKEND: ${{ vars.LEDGER_BACKEND }}
+      LEDGER_TARGET: ${{ secrets.LEDGER_TARGET }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+      AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Append result hashes
+        run: |
+          set -euo pipefail
+          if [ ! -d "$RESULTS_DIR" ]; then
+            echo "Results directory not found: $RESULTS_DIR"
+            exit 0
+          fi
+          find "$RESULTS_DIR" -type f -name '*.json' -print0 | while IFS= read -r -d '' result_file; do
+            python3 ledger/scripts/hash_result.py "$result_file" | python3 ledger/scripts/append_ledger.py
+          done

@@ -1,0 +1,9 @@
+{
+  "accounts": [
+    {
+      "id": "admin@example.com",
+      "privileged": true,
+      "mfa_enabled": true
+    }
+  ]
+}

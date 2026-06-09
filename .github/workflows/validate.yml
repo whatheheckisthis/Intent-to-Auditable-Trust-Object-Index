@@ -1,0 +1,54 @@
+name: validate
+
+on:
+  pull_request:
+
+jobs:
+  conftest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install conftest
+        env:
+          CONFTEST_VERSION: 0.56.0
+        run: |
+          curl -sSL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" -o conftest.tar.gz
+          tar -xzf conftest.tar.gz conftest
+          sudo mv conftest /usr/local/bin/conftest
+      - name: Verify Rego policies
+        run: conftest verify ./policies/... ./test/unit/...
+      - name: Run mutation fixtures
+        run: |
+          python3 - <<'PY'
+          import json
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          manifest = json.loads(Path('test/mutations/mutation-manifest.json').read_text())
+          failures = []
+          for case in manifest:
+              policy_stem = Path(case['policy']).stem.lower().replace('-', '_')
+              control_parts = policy_stem.split('_')
+              namespace = f"iato.{control_parts[1]}.{policy_stem}"
+              output = subprocess.check_output([
+                  'conftest',
+                  'test',
+                  case['fixture'],
+                  '--policy',
+                  case['policy'],
+                  '--namespace',
+                  namespace,
+                  '--output',
+                  'json',
+              ], text=True)
+              data = json.loads(output)
+              failures_count = sum(len(result.get('failures', [])) for result in data)
+              actual = 'FAIL' if failures_count else 'PASS'
+              if actual != case['expected']:
+                  failures.append(f"{case['fixture']} expected {case['expected']} got {actual}")
+          if failures:
+              print('\n'.join(failures), file=sys.stderr)
+              sys.exit(1)
+          PY

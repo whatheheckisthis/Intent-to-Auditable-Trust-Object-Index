@@ -149,6 +149,16 @@ Scale is achieved by expanding the assertion library.
 | **Output nature** | Assertions are diagnostic and audit-ready; they do not substitute for registered assessor judgement |
 | **Governance** | All outputs must be interpreted within the governing framework context |
 
----
 
-*The IĀTŌ codebase, index documentation, and associated artefacts must not be used to underpin coursework content or submitted as original work in any assessed academic context. This is a practitioner artefact. All analytical claims must be traced to their cited primary sources. See `notebooks/DISCLAIMER.md` for full permitted-use terms.*
+ | Authority | Title | Publisher | Date |
+|---|---|---|---|
+| Australian Signals Directorate | [Information Security Manual](https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/ism) | cyber.gov.au | Mar. 2025 |
+| Government Communications Security Bureau | [New Zealand Information Security Manual](https://nzism.gcsb.govt.nz) | nzism.gcsb.govt.nz | Feb. 2024 |
+ 
+>The IĀTŌ codebase, index documentation, policy artefacts, crosswalk data, evidence outputs, and all associated materials (collectively, "the Artefact") are the work product of an independent assurance practitioner and shall remain subject to the governance terms specified in `notebooks/DISCLAIMER.md`. The Artefact shall not be reproduced, redistributed, sublicensed, or transmitted in any form or by any means without prior written authorisation.
+The Artefact shall not be submitted, in whole or in part, as original work in any assessed academic context, nor shall it be adapted or paraphrased for such purposes. The Artefact is developed exclusively for professional assurance engagements and shall therefore be interpreted within that context alone.
+
+>No provision of this Artefact shall be construed as constituting legal, regulatory, or certifying authority.
+All analytical claims contained herein shall be traceable to their cited primary sources; no claim shall be treated as authoritative in the absence of such traceability. Any use of the Artefact inconsistent with these terms, or with the full permitted-use terms specified in `notebooks/DISCLAIMER.md`, shall constitute a breach of the governance conditions under which the Artefact is maintained and may give rise to appropriate remedial action.
+
+

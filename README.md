@@ -11,11 +11,11 @@ The process ends at ledger commit. Remediation is out of scope. No resources in 
 
 | Stage | Component | Output |
 |---|---|---|
-| 1. Evidence Emission | Read-only API collectors (Lambda / Functions) | Raw JSON tenant configuration snapshot |
+| 1. Emission | Read-only API collectors (Lambda / Functions) | Raw JSON tenant configuration snapshot |
 | 2. Ingestion | Cross-account / cross-tenant trust boundary | Authenticated evaluation context |
 | 3. Evaluation | OPA / Rego policy-as-code assertion engine | `PASS` / `FAIL` per control ID |
 | 4. Runtime | Serverless ephemeral execution | Isolated, stateless evaluation |
-| 5. Ledger Commit | SHA-256 hash chain → WORM store | Immutable, tamper-evident audit record |
+| 5. Ledger | SHA-256 hash chain → WORM store | Immutable, tamper-evident audit record |
 | 6. Remediation | Manual — Terraform / PowerShell / change management | Restored compliance state (out of pipeline scope) |
 
 ## Repository Structure

@@ -5,9 +5,10 @@
 
 ## Overview
 
-The IAM Control Evaluation Framework provides a read-only engineering workflow for ingesting, normalising, and evaluating identity and access data against defined IAM control assertions.
+Ingests → Normalises → Evaluates
 
-The framework separates source-system data from control evaluation logic. Identity and access information from platforms such as SailPoint IGA, Microsoft Entra ID, and Active Directory is transformed into a common representation before being evaluated against access governance, entitlement, privileged access, Segregation of Duties (SoD), authentication, and migration assurance controls.
+
+CEF `v1.0.0` separates source system data from control evaluation logic. Identity and access information from platforms such as SailPoint IGA, Microsoft Entra ID, and Active Directory is transformed into a common representation before being evaluated against access governance, entitlement, privileged access, Segregation of Duties (SoD), authentication, and migration assurance controls.
 
 The resulting evaluations are converted into structured evidence containing the control assertion, evaluated identity state, outcome, timestamp, and supporting traceability information.
 
@@ -35,7 +36,7 @@ The framework is designed around the principle that IAM assurance should be deri
 
 The framework establishes a repeatable pipeline for identity and access assurance.
 
-Source-system extracts are collected from authoritative identity platforms, transformed into a normalised identity and access model, evaluated against explicit control assertions, and recorded as structured evidence.
+Source system extracts are collected from authoritative identity platforms, transformed into a normalised identity and access model, evaluated against explicit control assertions, and recorded as structured evidence.
 
 The architecture separates four concerns:
 
@@ -43,7 +44,7 @@ The architecture separates four concerns:
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Collection of identity, account, role, group, entitlement, and access data. | Transformation of source-specific structures into a common identity and access representation. | Execution of RBAC, SoD, privileged-access, authentication, entitlement, and migration assertions. | Generation of traceable evaluation records containing the evaluated state, assertion, outcome, and timestamp. |
 
-The implementation is read-only. Source identity, access, entitlement, role, group, and policy resources are not modified by the assurance process.
+The implementation is (read-only). Source identity, access, entitlement, role, group, and policy resources are not modified by the assurance process.
 
 ## Operating Workflow
 
@@ -606,7 +607,7 @@ iato-root/
 
 ## Summary
 
-v1.0.0 demonstrates how enterprise identity and access relationships can be represented as structured data, evaluated against explicit IAM control assertions, and converted into machine-verifiable evidence.
+CEF `v1.0.0` demonstrates how enterprise identity and access relationships can be represented as structured data, evaluated against explicit IAM control assertions, and converted into machine-verifiable evidence.
 
 The framework is centred on:
 

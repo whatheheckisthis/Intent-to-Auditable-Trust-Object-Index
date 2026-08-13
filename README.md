@@ -54,26 +54,72 @@ The ingestion stage extracts identity and access topology from authoritative sou
 
 
 ```mermaid
-graph TD
+flowchart LR
 
-    ING["INGESTION"]
+    subgraph SOURCES["IDENTITY SOURCES"]
+        AD["Active Directory"]
+        ENTRA["Microsoft Entra ID"]
+    end
 
-    SP["SailPoint Identity Governance and Administration"] --> ING
-    ENT["Microsoft Entra ID"] --> ING
-    AD["Active Directory"] --> ING
-    RBAC["Azure RBAC"] --> ING
-    EXT["Other Structured IAM Exports"] --> ING
+    subgraph TARGETS["ENTERPRISE SYSTEMS"]
+        JBOSS["WildFly / JBoss EAP"]
+        JAVA["Java EE Applications"]
+        LDAP["LDAP"]
+        FED["Federated Applications"]
+    end
 
-    ING --> ID["Identities"]
-    ING --> AC["Accounts"]
-    ING --> RO["RBAC Roles"]
-    ING --> GR["Security Groups"]
-    ING --> TE["Technical Entitlements"]
-    ING --> AP["Application Definitions"]
-    ING --> RA["Role Assignments"]
-    ING --> GM["Group Memberships"]
-    ING --> AR["Access Relationships"]
-    ING --> GV["Governance & Certification State"]
+    subgraph IGA["SAILPOINT IDENTITY GOVERNANCE"]
+        AGG["Identity & Account Aggregation"]
+        MODEL["Identity & Entitlement Model"]
+        ROLES["Roles & Access Relationships"]
+
+        CERT["Access Certification"]
+        SOD["SoD Analysis"]
+        PRIV["Privileged Access Review"]
+
+        REM["Remediation & Provisioning"]
+    end
+
+    subgraph OUTCOMES["GOVERNANCE OUTCOMES"]
+        DECISIONS["Certification Decisions"]
+        VIOLATIONS["SoD Violations"]
+        STATE["Updated IAM State"]
+    end
+
+
+    AD --> AGG
+    ENTRA --> AGG
+
+    JBOSS --> AGG
+    JAVA --> AGG
+    LDAP --> AGG
+    FED --> AGG
+
+    AGG --> MODEL
+    MODEL --> ROLES
+
+    ROLES --> CERT
+    ROLES --> SOD
+    ROLES --> PRIV
+
+    CERT --> DECISIONS
+    SOD --> VIOLATIONS
+    PRIV --> DECISIONS
+
+    DECISIONS --> REM
+    VIOLATIONS --> REM
+
+    REM --> JBOSS
+    REM --> JAVA
+    REM --> LDAP
+    REM --> FED
+
+    REM --> STATE
+    STATE --> MODEL
+
+
+    %% Long technical connectors
+    linkStyle default stroke-width:2px
 
 ```
 
@@ -114,43 +160,29 @@ Core evaluation areas include:
 ```mermaid
 graph TD
 
-    subgraph ENV["Supported Source Environments"]
-        SP["SailPoint IGA"]
-        ENT["Microsoft Entra ID"]
-        AD["Active Directory"]
-        RBAC["Azure RBAC"]
-        EXT["Structured IAM Exports"]
+    STATE["NORMALISED IDENTITY & ACCESS STATE"]
+
+    EVAL["CONTROL EVALUATION<br/><br/>Executes defined IAM assertions<br/>against the normalised state"]
+
+    STATE --> EVAL
+
+    subgraph ASSERTIONS["DEFINED IAM ASSERTIONS"]
+        AG["Access Governance"]
+        EV["Entitlement Validation"]
+        CS["Access Certification"]
+        PA["Privileged Access"]
+        SD["Segregation of Duties"]
+        AU["Authentication Controls"]
+        IM["Identity Migration Assurance"]
     end
 
-    ING["INGESTION"]
-
-    SP --> ING
-    ENT --> ING
-    AD --> ING
-    RBAC --> ING
-    EXT --> ING
-
-    DATA["Ingestion Data"]
-    ING --> DATA
-
-    DATA --> ID["Identities"]
-    DATA --> AC["Accounts"]
-    DATA --> RO["Roles & Groups"]
-    DATA --> EN["Entitlements"]
-    DATA --> AP["Applications"]
-    DATA --> AR["Access Relationships"]
-    DATA --> GV["Governance State"]
-
-    EVAL["CONTROL EVALUATION"]
-    DATA --> EVAL
-
-    EVAL --> AG["Access Governance"]
-    EVAL --> EV["Entitlement Validation"]
-    EVAL --> CS["Access Certification"]
-    EVAL --> PA["Privileged Access"]
-    EVAL --> SD["Segregation of Duties"]
-    EVAL --> AU["Authentication Controls"]
-    EVAL --> IM["Identity Migration Assurance"]
+    EVAL -. "evaluates" .-> AG
+    EVAL -. "evaluates" .-> EV
+    EVAL -. "evaluates" .-> CS
+    EVAL -. "evaluates" .-> PA
+    EVAL -. "evaluates" .-> SD
+    EVAL -. "evaluates" .-> AU
+    EVAL -. "evaluates" .-> IM
 
 ```
 

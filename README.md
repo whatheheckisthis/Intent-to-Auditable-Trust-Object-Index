@@ -1,58 +1,73 @@
 
-# v1.0.0: IAM Control Evaluation Framework
+# CEF v1.0.0: IAM Control Evaluation Framework
+
+A read-only Segregation of Duties (SoD) assurance model for hybrid IAM environments, classifying access combinations as toxic or non-toxic.
+
+A toxic combination is a set of entitlements that should not be held by the same identity, for example, the ability to both create and approve a payment.
+
+CEF reads identity and access data from Microsoft Entra ID, Active Directory and SailPoint IGA, combines it into one model, evaluates it against defined controls, and records each result as evidence. Controls for privileged access, access certification, entitlement management, authentication and migration assurance are evaluated on the same model.
+
+CEF assesses and reports only. Any uplift is delivered through established IAM operational and change-management processes. CEF is self-directed portfolio work.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["1. Ingest<br/>Entra ID / AD snapshots<br/>SailPoint scheduled export"] --> B["2. Normalise<br/>One identity and<br/>access model"]
+    B --> C["3. Evaluate<br/>SoD first, then<br/>supporting controls"]
+    C --> D["4. Evidence<br/>Result, finding,<br/>SHA-256 digest"]
+```
 
 
+### 1. Ingest
 
-## Overview
+CEF takes two kinds of source input. Both are read-only.
 
-Ingests → Normalises → Evaluates
+| Source | Method |
+| ------ | ------ |
+| Microsoft Entra ID, Active Directory | Read-only snapshots taken by the collectors |
+| SailPoint IGA | Scheduled export, commonly XML |
+
+Collectors hold read permissions only.
+
+**SailPoint XML export format**
+
+SailPoint objects are held as XML text files. Each object type is represented by its own XML tag and has its own structure:
+
+| Tag | Object |
+| --- | ------ |
+| `<Rule>` | Rules |
+| `<TaskDefinition>` | Tasks |
+| `<EmailTemplate>` | Email templates |
+| `<sailpoint>` | Wrapper element that holds one or more objects |
+
+A file holding a single object starts with a `DOCTYPE` declaration for that object type, and begins and ends with that object's tag:
+
+```xml
+<!DOCTYPE Rule ...>
+<Rule ...>
+  ...
+</Rule>
+```
+
+The better practice is to wrap objects in a `<sailpoint>` element. The file then declares `sailpoint` as its document type and can hold several objects, which are imported together:
+
+```xml
+<!DOCTYPE sailpoint ...>
+<sailpoint>
+  <Rule ...> ... </Rule>
+  <EmailTemplate ...> ... </EmailTemplate>
+</sailpoint>
+```
+
+<img width="388" height="206" alt="Screen Shot 2026-11-08 at 7 27 28 AM" src="https://github.com/user-attachments/assets/e7f4170d-a96d-4cf2-96b4-28c0c173ada9" />
 
 
-CEF `v1.0.0` separates source system data from control evaluation logic. Identity and access information from platforms such as SailPoint IGA, Microsoft Entra ID, and Active Directory is transformed into a common representation before being evaluated against access governance, entitlement, privileged access, Segregation of Duties (SoD), authentication, and migration assurance controls.
+CEF treats the scheduled export as read-only input in this format.
 
-The resulting evaluations are converted into structured evidence containing the control assertion, evaluated identity state, outcome, timestamp, and supporting traceability information.
+### 2. Normalise
 
-The operating model is:
-
-```text
-+-----------------------+      +-----------------------+      +-----------------------+      +-----------------------+
-|     1. INGESTION      |      |     2. MODELLING      |      |     3. EVALUATION     |      |      4. EVIDENCE      |
-|   SailPoint / Entra   |----->|   Normalised Graph    |----->|    RBAC Assertions    |----->|   Audit Attestation   |
-|   ID / Active Dir.    |      |         Model         |      |        & SoD          |      |         Log           |
-+-----------------------+      +-----------------------+      +-----------------------+      +-----------------------+
-            |                              |                              |                              |
-            |                              |                              |                              |
-            v                              v                              v                              v
-    [ Ingested Data ]              [ Normalised Model ]           [ Evaluated Controls ]          [ Audit Evidence ]
-    - Identities & Accounts        - Identity relationships       - Segregation of Duties        - Control result
-    - RBAC Roles & Groups          - RBAC relationships            - Privileged Access             - Finding
-    - Technical Entitlements      - Entitlement relationships    - Migration Drift               - Source reference
-                                   - Access relationships                                         - Traceability
-````
-
-The framework is designed around the principle that IAM assurance should be derived from the observed identity and access state rather than from static documentation alone.
-
-## Executive Summary
-
-The framework establishes a repeatable pipeline for identity and access assurance.
-
-Source system extracts are collected from authoritative identity platforms, transformed into a normalised identity and access model, evaluated against explicit control assertions, and recorded as structured evidence.
-
-The architecture separates four concerns:
-
-| **Ingestion**                                                               | **Modelling**                                                                                  | **Evaluation**                                                                                    | **Evidence**                                                                                                  |
-| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Collection of identity, account, role, group, entitlement, and access data. | Transformation of source-specific structures into a common identity and access representation. | Execution of RBAC, SoD, privileged-access, authentication, entitlement, and migration assertions. | Generation of traceable evaluation records containing the evaluated state, assertion, outcome, and timestamp. |
-
-The implementation is (read-only). Source identity, access, entitlement, role, group, and policy resources are not modified by the assurance process.
-
-## Operating Workflow
-
-## Identity and Access Modelling
-
-Source extracts are transformed into a common representation so that downstream control logic does not need to understand every vendor-specific schema.
-
-The model represents relationships between:
+Each source has its own schema. CEF converts all of them into one model so the control logic does not depend on any vendor format.
 
 ```yaml
 identity:
@@ -60,64 +75,17 @@ identity:
     application:
       role:
         entitlement:
-```
 
-Additional governance relationships can represent:
-
-```yaml
+# governance relationships
 identity:
   reviewer:
     certification:
       decision:
 ```
 
-This allows the evaluation engine to reason about access relationships consistently across different identity platforms.
+### 3. Evaluate
 
-### 3. Control Assertion Execution
-
-The evaluation stage executes defined IAM assertions against the normalised identity and access state.
-
-Core evaluation areas include:
-
-```mermaid
-graph TD
-
-    STATE["NORMALISED IDENTITY & ACCESS STATE"]
-
-    EVAL["CONTROL EVALUATION<br/><br/>Executes defined IAM assertions<br/>against the normalised state"]
-
-    STATE --> EVAL
-
-    subgraph ASSERTIONS["DEFINED IAM ASSERTIONS"]
-        AG["Access Governance"]
-        EV["Entitlement Validation"]
-        CS["Access Certification"]
-        PA["Privileged Access"]
-        SD["Segregation of Duties"]
-        AU["Authentication Controls"]
-        IM["Identity Migration Assurance"]
-    end
-
-    EVAL -. "evaluates" .-> AG
-    EVAL -. "evaluates" .-> EV
-    EVAL -. "evaluates" .-> CS
-    EVAL -. "evaluates" .-> PA
-    EVAL -. "evaluates" .-> SD
-    EVAL -. "evaluates" .-> AU
-    EVAL -. "evaluates" .-> IM
-
-```
-
-Example assertions include:
-
-```yaml
-control:
-  control_id: IATO-AC-001
-  domain: access_control
-  assertion: active_access_must_have_an_attributable_identity_relationship
-```
-
-And:
+SoD is the core function. Each control is an explicit assertion tested against the normalised model. Because the model combines all sources, a toxic combination can be found across platforms, for example a SailPoint-exported entitlement combined with an Entra ID role or Active Directory group membership.
 
 ```yaml
 control:
@@ -126,11 +94,25 @@ control:
   assertion: conflicting_entitlements_must_not_be_assigned
 ```
 
-Each assertion produces an explicit evaluation result rather than modifying the underlying identity state.
+Controls are grouped into seven domains:
 
-### 4. Evidence Capture
+| ID | Domain | What is evaluated |
+| -- | ------ | ----------------- |
+| `IATO-SD` | Segregation of Duties | Conflicting entitlement combinations are not assigned |
+| `IATO-PA` | Privileged Access | Privileged identities, accounts and assignments are attributable, approved and reviewed |
+| `IATO-GV` | Identity Governance | Governance relationships, including certification decisions |
+| `IATO-EN` | Entitlement Management | Entitlements are attributable and reviewable |
+| `IATO-AC` | Access Control | Active access has an attributable identity relationship |
+| `IATO-AU` | Authentication | Authentication-related control state |
+| `IATO-IM` | Identity Migration | State differences between legacy IAM and Entra ID / Azure RBAC targets |
 
-Each control evaluation produces a structured evidence record.
+**Ownership and exceptions.** CEF evaluates against a conflict matrix; it does not decide what is toxic. In line with standard IGA practice, the matrix is owned by the business or application owner and approved through the organisation's access governance process, and toxic pairs are risk-rated by that control owner. Approved exceptions and compensating controls remain governance records held by the control owner, with documented justification and a review date. CEF reports the combination as found, and the exception is assessed against that finding through established IAM processes.
+
+Conflict definitions are policy inputs under `policies/sod`, kept separate from collected identity state. OPA/Rego is the policy evaluation mechanism where policy-as-code is used.
+
+### 4. Evidence
+
+Every evaluation produces a record linking source state to result.
 
 ```yaml
 evidence:
@@ -149,453 +131,52 @@ evidence:
     digest: recorded
 ```
 
-Evidence is intended to maintain traceability between:
+An evidence record is not an access decision or a remediation action.
 
-```text
-Source State
-    |
-    v
-Identity / Access Relationship
-    |
-    v
-Control Assertion
-    |
-    v
-Evaluation Result
-    |
-    v
-Evidence Record
-```
+## Migration assurance
 
-The evidence record does not itself constitute an access decision or remediation action.
+CEF compares a captured legacy IAM state against an Entra ID / Azure RBAC target state and reports:
 
-## IAM Control Domains
+- Missing identities and orphaned accounts
+- Missing entitlements and unexpected role assignments
+- Access relationship and privilege changes
+- SoD differences
+- Legacy access remaining after migration
 
-The framework evaluates identity and access state across several IAM governance domains.
+CEF observes and compares. It does not perform the migration.
 
-| Domain                 | Purpose                                                       |
-| ---------------------- | ------------------------------------------------------------- |
-| Access Control         | Validate authorised identity-to-resource access               |
-| Authentication         | Evaluate authentication-related control state                 |
-| Entitlement Management | Validate entitlement attribution and governance               |
-| Identity Governance    | Evaluate identity and access governance relationships         |
-| Privileged Access      | Evaluate privileged identities, accounts, and assignments     |
-| Segregation of Duties  | Identify conflicting access combinations                      |
-| Identity Migration     | Detect access and identity-state differences during migration |
+## Constraints
 
-## Segregation of Duties
+| Constraint | Detail |
+| ---------- | ------ |
+| Read-only | Read permitted on source environments. Create, update and delete prohibited. |
+| No remediation | Out of scope by design. Findings go to established IAM operational and change-management processes. |
+| Not a SailPoint replacement | SailPoint is treated as the enterprise IGA platform. CEF does not reproduce proprietary SailPoint functionality. |
+| Framework references are context | Mappings are maintained separately from control implementation. They create no compliance obligations and do not replace formal assessment. |
 
-SoD analysis evaluates identity entitlement relationships against defined incompatible access combinations.
+## Framework alignment
 
-```yaml
-sod_control:
-  control_id: IATO-SD-001
-  domain: segregation_of_duties
-  assertion: conflicting_entitlements_must_not_be_assigned
+| Framework | Relevant areas |
+| --------- | -------------- |
+| NZISM | Identity management, authentication, access control, privileged access, identity assurance, access governance |
+| ISM | Identity and access management, authentication, privileged access, access control, identity assurance |
+| Essential Eight | Restrict Administrative Privileges, Multi-Factor Authentication |
 
-  evaluation:
-    identity: user
-    entitlement_a: entitlement_a
-    entitlement_b: entitlement_b
-    result: fail
+The control crosswalk is in `docs/IAM_CONTROL_CROSSWALK.csv`. Internal `IATO` control IDs are independent of external framework numbering.
 
-  evidence:
-    conflict_definition: defined
-    entitlement_relationship: detected
-    evaluation_timestamp: recorded
-```
-
-The purpose is to identify potentially conflicting access combinations for governance review and remediation through established IAM processes.
-
-## Entitlement Governance
-
-Entitlement governance evaluates whether access relationships remain attributable, appropriate, and reviewable.
-
-```yaml
-entitlement_control:
-  control_id: IATO-EN-001
-  domain: entitlement_management
-  assertion: entitlement_relationship_must_be_attributable
-
-  evidence:
-    identity: recorded
-    entitlement: recorded
-    application: recorded
-    relationship: recorded
-    governance_state: recorded
-```
-
-This provides a structured basis for entitlement validation and access-governance activities.
-
-## Access Certification
-
-Access certification is represented as a governance relationship between an identity, the associated access, and an authorised review decision.
-
-```yaml
-access_certification:
-  identity: user
-  application: application
-  entitlement: entitlement
-
-  reviewer: authorised_reviewer
-
-  decision:
-    state: approved
-
-  review:
-    status: completed
-    timestamp: recorded
-```
-
-Certification evidence can be associated with the underlying identity and entitlement state to support governance and audit activities.
-
-## Privileged Access
-
-Privileged access is evaluated as a distinct IAM governance concern.
-
-```yaml
-privileged_access:
-  identity: user
-  account: privileged_account
-  privilege: privileged_role
-
-  governance:
-    attributable: true
-    approved: true
-    reviewed: true
-```
-
-The framework focuses on identity and access governance aspects of privileged access rather than implementing a separate privileged-access management platform.
-
-## Microsoft Entra ID and Active Directory
-
-The framework supports hybrid identity environments incorporating Microsoft Entra ID and Active Directory.
-
-```yaml
-identity_platform:
-
-  cloud:
-    platform: microsoft_entra_id
-    controls:
-      - conditional_access
-      - role_assignments
-      - group_membership
-      - authentication
-
-  directory:
-    platform: active_directory
-    controls:
-      - accounts
-      - groups
-      - group_membership
-      - privileged_access
-```
-
-The evaluation model focuses on resulting identity and access relationships rather than treating either platform as an isolated security domain.
-
-## Azure RBAC
-
-Azure RBAC relationships can form part of the access state evaluated during identity governance and migration assurance.
-
-```yaml
-azure_rbac:
-  principal: user
-  scope: subscription_or_resource
-  role: assigned_role
-  assignment_state: active
-  governance_state: approved
-```
-
-Azure RBAC assignments can be evaluated alongside other identity, role, group, and entitlement relationships.
-
-## Identity Migration Assurance
-
-The framework can be applied to identity and access migration scenarios involving legacy IAM environments and Microsoft Entra ID or Azure RBAC target states.
-
-```yaml
-migration_assurance:
-
-  source:
-    platform: legacy_iam
-    identity_state: captured
-    access_state: captured
-
-  target:
-    platform: microsoft_entra_id
-    access_state: captured
-    rbac_state: captured
-
-  comparison:
-    identities: evaluated
-    entitlements: evaluated
-    roles: evaluated
-    access_relationships: evaluated
-    sod_relationships: evaluated
-
-  outcome:
-    migration_state: evaluated
-    evidence: generated
-```
-
-Migration assurance can identify conditions such as:
-
-* Missing identities
-* Orphaned accounts
-* Missing entitlements
-* Unexpected role assignments
-* Access relationship changes
-* Privilege changes
-* SoD differences
-* Legacy access remaining after migration
-
-The framework does not perform the migration itself.
-
-## Policy-as-Code
-
-IAM control assertions can be expressed as policy-as-code and evaluated against structured identity and access data.
-
-```yaml
-control:
-  control_id: IATO-AC-001
-  domain: access_control
-  title: Authorised Access
-  assertion: active_access_must_have_an_attributable_identity_relationship
-
-  evaluation:
-    expected_state: compliant
-    failure_state: non_compliant
-```
-
-OPA/Rego provides the policy evaluation mechanism where policy-as-code execution is used.
-
-The policy layer remains independent from external framework numbering.
-
-## Control Identification
-
-IAM controls use internal identifiers for implementation and evidence purposes.
-
-```yaml
-control_id:
-  namespace: IATO
-  domain: IAM
-  sequence: 001
-```
-
-Current domain identifiers include:
-
-```text
-IATO-AC
-IATO-AU
-IATO-EN
-IATO-GV
-IATO-PA
-IATO-SD
-IATO-IM
-```
-
-| Identifier | Domain                 |
-| ---------- | ---------------------- |
-| `AC`       | Access Control         |
-| `AU`       | Authentication         |
-| `EN`       | Entitlement Management |
-| `GV`       | Identity Governance    |
-| `PA`       | Privileged Access      |
-| `SD`       | Segregation of Duties  |
-| `IM`       | Identity Migration     |
-
-## Framework Alignment
-
-The framework uses existing security frameworks as contextual references for applicable IAM controls.
-
-### NZISM
-
-Relevant areas include:
-
-* Identity management
-* Authentication
-* Access control
-* Privileged access
-* Identity assurance
-* Access governance
-
-### ISM
-
-Relevant areas include:
-
-* Identity and access management
-* Authentication
-* Privileged access
-* Access control
-* Identity assurance
-
-### Essential Eight
-
-Where applicable, IAM-related controls include:
-
-* Restrict Administrative Privileges
-* Multi-Factor Authentication
-* User Application Hardening
-
-Framework mappings are maintained separately from IAM control implementation.
-
-```yaml
-framework_mapping:
-  control_id: IATO-PA-001
-  domain: privileged_access
-
-  references:
-    - framework: NZISM
-      applicability: identity_and_access_control
-
-    - framework: ISM
-      applicability: identity_and_access_control
-
-    - framework: E8
-      control: restrict_administrative_privileges
-```
-
-Framework references do not create new compliance obligations and do not replace formal control interpretation or assessment.
-
-## Read-Only Operation
-
-The framework is designed for observation and assurance.
-
-```yaml
-operation:
-
-  source_environment:
-    read: permitted
-    create: prohibited
-    update: prohibited
-    delete: prohibited
-
-  output:
-    analysis: permitted
-    evidence_generation: permitted
-    remediation: out_of_scope
-```
-
-Remediation remains within established IAM operational processes and change-management controls.
-
-## Identity Governance and Administration
-
-The framework is aligned with established IGA concepts rather than treating identity data as a generic configuration dataset.
-
-Relevant activities include:
-
-* Identity lifecycle governance
-* Account and entitlement management
-* Role and access governance
-* Access certification
-* Entitlement validation
-* Privileged access review
-* Segregation-of-Duties analysis
-* Application access governance
-* Identity migration assurance
-
-SailPoint IGA is treated as an enterprise IGA platform within the broader IAM operating environment.
-
-The framework does not attempt to replace SailPoint or reproduce proprietary SailPoint functionality.
-
-## Repository Structure
+## Repository structure
 
 ```text
 iato-root/
-├── .github/
-│   └── workflows/
-│       ├── validate.yml
-│       └── ledger-commit.yml
-│
-├── docs/
-│   ├── IAM_CONTROL_CROSSWALK.csv
-│   └── IDENTITY_DATA_MODEL.md
-│
-├── collectors/
-│   ├── azure/
-│   │   └── entra_snapshot.py
-│   └── active_directory/
-│       └── ad_snapshot.py
-│
-├── policies/
-│   ├── access/
-│   ├── authentication/
-│   ├── entitlement/
-│   ├── governance/
-│   ├── privileged/
-│   └── sod/
-│
-├── test/
-│   ├── mutations/
-│   └── unit/
-│
-├── evidence/
-│   ├── generate_evidence.py
-│   └── schemas/
-│
-├── ledger/
-│   ├── scripts/
-│   │   ├── hash_result.py
-│   │   └── append_ledger.py
-│   └── storage/
-│       └── README.md
-│
+├── .github/workflows/   validate.yml, ledger-commit.yml
+├── docs/                IAM_CONTROL_CROSSWALK.csv, IDENTITY_DATA_MODEL.md,
+│                        images/sailpoint-xml-object-structure.png
+├── collectors/          azure/entra_snapshot.py, active_directory/ad_snapshot.py
+├── policies/            access, authentication, entitlement, governance, privileged, sod
+├── test/                mutations, unit
+├── evidence/            generate_evidence.py, schemas
+├── ledger/              scripts/hash_result.py, scripts/append_ledger.py, storage/README.md
 └── requirements.txt
 ```
 
-## Scope
-
-| Dimension            | Scope                                                |
-| -------------------- | ---------------------------------------------------- |
-| Practice             | Identity Engineering                                 |
-| Job Family           | Identity and Access Management                       |
-| Specialisation       | Identity Governance and Administration               |
-| Primary IGA Platform | SailPoint IGA                                        |
-| Cloud Identity       | Microsoft Entra ID                                   |
-| Directory            | Active Directory                                     |
-| Authorisation        | Azure RBAC                                           |
-| Governance           | Access certification, entitlement management and SoD |
-| Assurance            | IAM control validation and evidence                  |
-| Migration            | Identity and access migration assurance              |
-| Operation            | Read-only                                            |
-| Remediation          | Out of scope                                         |
-
-## Summary
-
-CEF `v1.0.0` demonstrates how enterprise identity and access relationships can be represented as structured data, evaluated against explicit IAM control assertions, and converted into machine-verifiable evidence.
-
-The framework is centred on:
-
-```yaml
-practice:
-  identity_engineering:
-    domain: identity_and_access_management
-    specialisation: identity_governance_and_administration
-
-capabilities:
-  - identity_governance
-  - entitlement_management
-  - access_certification
-  - segregation_of_duties
-  - privileged_access_governance
-  - authentication
-  - access_control
-  - identity_migration_assurance
-
-platforms:
-  - sailpoint_iga
-  - microsoft_entra_id
-  - active_directory
-  - azure_rbac
-
-assurance:
-  - iam_control_validation
-  - migration_assurance
-  - auditable_identity_evidence
-```
-
-The project demonstrates practical application of IAM governance and assurance concepts across hybrid enterprise identity environments, with particular emphasis on identity state, entitlement relationships, access governance, SoD analysis, privileged access, and migration assurance.
-
-
-
-
-
+---

@@ -95,8 +95,6 @@ control:
   domain: segregation_of_duties
   assertion: conflicting_entitlements_must_not_be_assigned
 ```
->Controls are grouped into seven domains. The grouping follows the control families that established frameworks use for identity and access management, so each domain can be referenced against NZISM, ISM and SOC 2 logical access requirements without changing the controls themselves. It also mirrors the RBAC model of identities, roles, entitlements and assignments, and every control carries the same metadata fields (control_id, domain and assertion), which keeps evidence records consistent and traceable. Framework references are context only and do not create compliance obligations. The table below shows each domain in order, with each row indicating how the control maps to the relevant family, RBAC concept and supporting metadata.
-
 
 | ID | Domain | What is evaluated |
 | -- | ------ | ----------------- |
@@ -108,9 +106,9 @@ control:
 | `IATO-AU` | Authentication | Authentication-related control state |
 | `IATO-IM` | Identity Migration | State differences between legacy IAM and Entra ID / Azure RBAC targets |
 
->Ownership and exceptions. CEF evaluates against a conflict matrix; it does not decide what is toxic. In line with standard IGA practice, the matrix is owned by the business or application owner and approved through the organisation's access governance process, and toxic pairs are risk-rated by that control owner. Approved exceptions and compensating controls remain governance records held by the control owner, with documented justification and a review date. CEF reports the combination as found, and the exception is assessed against that finding through established IAM processes.
 
-Conflict definitions are policy inputs under `policies/sod`, kept separate from collected identity state. OPA/Rego is the policy evaluation mechanism where policy-as-code is used.
+>Control ownership sits with the client. CEF does not define controls. Control requirements are derived from the client’s enterprise material, such as security policies, access standards and risk or compliance requirements, and are evaluated against observed identity and access state.
+
 
 ### 4. Evidence
 

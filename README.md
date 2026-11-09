@@ -127,17 +127,6 @@ control:
 ```
 
 Organise client controls into seven IAM domains. The domains follow common IAM control families (NZISM, ISM, SOC 2 logical access) and the RBAC model. Each control record carries `control_id`, `domain` and `assertion`.
-
-| ID | Domain | What is evaluated |
-|---|---|---|
-| `IATO-SD` | Segregation of Duties | Conflicting entitlement combinations are not assigned |
-| `IATO-PA` | Privileged Access | Privileged identities, accounts and assignments are attributable, approved and reviewed |
-| `IATO-GV` | Identity Governance | Governance relationships, including certification decisions |
-| `IATO-EN` | Entitlement Management | Entitlements are attributable and reviewable |
-| `IATO-AC` | Access Control | Active access has an attributable identity relationship |
-| `IATO-AU` | Authentication | Authentication-related control state |
-| `IATO-IM` | Identity Migration | State differences between legacy IAM and Entra ID / Azure RBAC targets |
-
 Hold conflict definitions under `policies/sod`, separate from collected identity state. Use OPA/Rego for policy evaluation where policy-as-code is used.
 
 ### 7.3 Ownership and exceptions

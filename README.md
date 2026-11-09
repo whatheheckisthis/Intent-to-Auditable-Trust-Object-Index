@@ -1,15 +1,43 @@
-
 # CEF v1.0.0: IAM Control Evaluation Framework
 
-A read-only Segregation of Duties (SoD) assurance model for hybrid IAM environments, classifying access combinations as toxic or non-toxic.
+## 1. Purpose
 
-A toxic combination is a set of entitlements that should not be held by the same identity, for example, the ability to both create and approve a payment.
+Evaluate identity and access state against client controls. Detect toxic combinations first. Evaluate privileged access, access certification, entitlement, authentication and migration assurance on the same model. Record each result as evidence. CEF assesses and reports only. Uplift is delivered through established IAM operational and change-management processes. 
 
-CEF reads identity and access data from Microsoft Entra ID, Active Directory and SailPoint IGA, combines it into one model, evaluates it against defined controls, and records each result as evidence. Controls for privileged access, access certification, entitlement management, authentication and migration assurance are evaluated on the same model.
+## 2. Scope
 
-CEF assesses and reports only. Any uplift is delivered through established IAM operational and change-management processes. CEF is self-directed portfolio work.
+| In scope | Out of scope |
+| -------- | ------------ |
+| SoD evaluation | Remediation |
+| Privileged access, access certification, entitlement, authentication and migration assurance evaluation | Account provisioning and entitlement modification |
+| Evidence generation | Executing migrations |
+| Framework mapping and crosswalk | Defining client controls |
+| | Replacing SailPoint, Entra ID or Active Directory |
 
-## How it works
+## 3. Definitions
+
+| Term | Definition |
+| ---- | ---------- |
+| Toxic combination | A set of entitlements that must not be held by the same identity, for example the ability to both create and approve a payment |
+| Non-toxic | An access combination with no conflict against the conflict matrix |
+| Conflict matrix | Client-owned list of incompatible entitlement combinations |
+| Control | Client-defined requirement, expressed as an explicit assertion |
+| Crosswalk | Mapping of client controls to framework controls |
+| Evidence record | Structured result linking source state, assertion and outcome |
+
+## 4. Control sources
+
+- Derive controls from the client's enterprise material: security policies, access standards, and risk and compliance requirements.
+- Evaluate client controls. CEF does not define them.
+- Map client controls to the applicable frameworks (for example NZISM, ISM, Essential Eight and SOC 2). Deliver the result as a crosswalk (`docs/IAM_CONTROL_CROSSWALK.csv`).
+- Trace mapped controls to risk register entries where a risk register is in scope.
+- Treat `IATO` identifiers as illustrative labels for the working structure. They are not a control set.
+
+The engagement is primarily IAM work. Framework mapping supports it.
+
+## 5. Architecture
+
+CEF is a source-integration and control-evaluation tool. It is not a conventional CRUD application and provides no general-purpose create, read, update or delete operations against source-system records.
 
 ```mermaid
 flowchart LR
@@ -18,32 +46,32 @@ flowchart LR
     C --> D["4. Evidence<br/>Result, finding,<br/>SHA-256 digest"]
 ```
 
+## 6. Inputs
 
-### 1. Ingest
+Collect all source data with read-only permissions.
 
-| Source | How data is obtained |
-| ------ | -------------------- |
-| SailPoint IGA | Scheduled export (XML) |
-| Microsoft Entra ID | Live read-only snapshot via collector script (Microsoft Graph API) |
-| Active Directory | Live read-only snapshot via collector script |
+| Source | Collection mechanism | Data |
+| ------ | -------------------- | ---- |
+| SailPoint IGA | Scheduled XML export | SailPoint objects and IGA data |
+| Microsoft Entra ID | Live read-only snapshot via collector script (Microsoft Graph API) | Users, privileged role assignments, role eligibility, MFA methods and Conditional Access policies |
+| Active Directory | Live read-only snapshot via collector script | Directory identities, accounts and access relationships |
 
-SailPoint is the only source delivered as a scheduled export, commonly in XML. Entra ID and Active Directory are read directly instead: the collector scripts take a live, read-only snapshot of current state, such as users, privileged role assignments and eligibility, MFA methods and Conditional Access policies, so no scheduled dump is needed.
+- Receive SailPoint data as a scheduled export, commonly XML.
+- Query Entra ID and Active Directory on demand. No scheduled dump is required.
+- Extract the relevant identity, account, role and entitlement fields after collection.
 
-Ingestion is therefore **hybrid**. SailPoint data arrives on a schedule, and the Microsoft platforms are queried on demand. All 
-Collectors hold read permissions only.
+### 6.1 SailPoint XML format
 
-**SailPoint XML export format**
-
-SailPoint objects are held as XML text files. Each object type is represented by its own XML tag and has its own structure:
+SailPoint objects are held as XML text files. Each object type has its own XML tag and structure.
 
 | Tag | Object |
 | --- | ------ |
 | `<Rule>` | Rules |
 | `<TaskDefinition>` | Tasks |
 | `<EmailTemplate>` | Email templates |
-| `<sailpoint>` | Wrapper element that holds one or more objects |
+| `<sailpoint>` | Wrapper element holding one or more objects |
 
-A file holding a single object starts with a `DOCTYPE` declaration for that object type, and begins and ends with that object's tag:
+A single-object file starts with a `DOCTYPE` declaration for that object type. It begins and ends with that object's tag:
 
 ```xml
 <!DOCTYPE Rule ...>
@@ -52,7 +80,7 @@ A file holding a single object starts with a `DOCTYPE` declaration for that obje
 </Rule>
 ```
 
-The better practice is to wrap objects in a `<sailpoint>` element. The file then declares `sailpoint` as its document type and can hold several objects, which are imported together:
+A wrapped file declares `sailpoint` as its document type and holds several objects, which are imported together. Wrapping is the better practice:
 
 ```xml
 <!DOCTYPE sailpoint ...>
@@ -62,14 +90,16 @@ The better practice is to wrap objects in a `<sailpoint>` element. The file then
 </sailpoint>
 ```
 
-<img width="388" height="206" alt="Screen Shot 2026-11-08 at 7 27 28 AM" src="https://github.com/user-attachments/assets/e7f4170d-a96d-4cf2-96b4-28c0c173ada9" />
+<img width="388" height="206" alt="Screen Shot 2026-11-08 at 7 27 28 AM" src="https://github.com/user-attachments/assets/63916d2d-48b8-4d28-a3f3-2223fed872c0" />
 
 
-CEF treats the scheduled export as read-only input in this format.
+Accept both forms: object-specific documents and multi-object exports using the `sailpoint` wrapper. Treat the export as read-only input.
 
-### 2. Normalise
+## 7. Processing
 
-Each source has its own schema. CEF converts all of them into one model so the control logic does not depend on any vendor format.
+### 7.1 Normalise
+
+Map each source schema into one model, so control logic does not depend on vendor formats.
 
 ```yaml
 identity:
@@ -85,9 +115,9 @@ identity:
       decision:
 ```
 
-### 3. Evaluate
+### 7.2 Evaluate
 
-SoD is the core function. Each control is an explicit assertion tested against the normalised model. Because the model combines all sources, a toxic combination can be found across platforms, for example a SailPoint-exported entitlement combined with an Entra ID role or Active Directory group membership.
+Express each client control as an explicit assertion. Test it against the normalised model. Evaluate across platforms, for example a SailPoint-exported entitlement combined with an Entra ID role or Active Directory group membership.
 
 ```yaml
 control:
@@ -95,6 +125,8 @@ control:
   domain: segregation_of_duties
   assertion: conflicting_entitlements_must_not_be_assigned
 ```
+
+Organise client controls into seven IAM domains. The domains follow common IAM control families (NZISM, ISM, SOC 2 logical access) and the RBAC model. Each control record carries `control_id`, `domain` and `assertion`.
 
 | ID | Domain | What is evaluated |
 | -- | ------ | ----------------- |
@@ -106,13 +138,32 @@ control:
 | `IATO-AU` | Authentication | Authentication-related control state |
 | `IATO-IM` | Identity Migration | State differences between legacy IAM and Entra ID / Azure RBAC targets |
 
+Hold conflict definitions under `policies/sod`, separate from collected identity state. Use OPA/Rego for policy evaluation where policy-as-code is used.
 
->Control ownership sits with the client. CEF does not define controls. Control requirements are derived from the client’s enterprise material, such as security policies, access standards and risk or compliance requirements, and are evaluated against observed identity and access state.
+### 7.3 Ownership and exceptions
 
+CEF evaluates against a conflict matrix. It does not decide what is toxic.
 
-### 4. Evidence
+- **Matrix owner:** the client's business or application owner. Approve the matrix through the organisation's access governance process.
+- **Risk rating:** the control owner rates each toxic pair.
+- **Exceptions and compensating controls:** keep as governance records held by the control owner, with documented justification and a review date.
+- **Reporting:** report the combination as found. Assess the exception against that finding through established IAM processes.
 
-Every evaluation produces a record linking source state to result.
+### 7.4 Migration assurance
+
+Compare a captured legacy IAM state against an Entra ID / Azure RBAC target state. Report:
+
+- Missing identities and orphaned accounts
+- Missing entitlements and unexpected role assignments
+- Access relationship and privilege changes
+- SoD differences
+- Legacy access remaining after migration
+
+Observe and compare only. Do not perform the migration.
+
+## 8. Outputs
+
+Produce one evidence record per evaluation, linking source state to result.
 
 ```yaml
 evidence:
@@ -131,30 +182,25 @@ evidence:
     digest: recorded
 ```
 
-An evidence record is not an access decision or a remediation action.
+- An evidence record is not an access decision or a remediation action.
+- Append records to the evidence ledger (`ledger/`) using the SHA-256 digest.
 
-## Migration assurance
+## 9. Operational boundaries
 
-CEF compares a captured legacy IAM state against an Entra ID / Azure RBAC target state and reports:
+| Operation | Behaviour |
+| --------- | --------- |
+| Source data retrieval | Read |
+| Source data modification | Prohibited |
+| Account provisioning | Not performed |
+| Entitlement modification | Not performed |
+| Access remediation | Not performed |
+| Control evaluation | Performed |
+| Evidence generation | Performed |
+| Evidence integrity | SHA-256 |
 
-- Missing identities and orphaned accounts
-- Missing entitlements and unexpected role assignments
-- Access relationship and privilege changes
-- SoD differences
-- Legacy access remaining after migration
+CEF does not replace SailPoint, Microsoft Entra ID or Active Directory. It consumes their data and evaluates the resulting identity and access state. Route findings to established IAM operational and change-management processes.
 
-CEF observes and compares. It does not perform the migration.
-
-## Constraints
-
-| Constraint | Detail |
-| ---------- | ------ |
-| Read-only | Read permitted on source environments. Create, update and delete prohibited. |
-| No remediation | Out of scope by design. Findings go to established IAM operational and change-management processes. |
-| Not a SailPoint replacement | SailPoint is treated as the enterprise IGA platform. CEF does not reproduce proprietary SailPoint functionality. |
-| Framework references are context | Mappings are maintained separately from control implementation. They create no compliance obligations and do not replace formal assessment. |
-
-## Framework alignment
+## 10. Framework references
 
 | Framework | Relevant areas |
 | --------- | -------------- |
@@ -162,9 +208,11 @@ CEF observes and compares. It does not perform the migration.
 | ISM | Identity and access management, authentication, privileged access, access control, identity assurance |
 | Essential Eight | Restrict Administrative Privileges, Multi-Factor Authentication |
 
-The control crosswalk is in `docs/IAM_CONTROL_CROSSWALK.csv`. Internal `IATO` control IDs are independent of external framework numbering.
+- Which frameworks apply depends on the client.
+- Framework references provide context only. They create no compliance obligations and do not replace formal assessment.
+- `IATO` control IDs are illustrative and independent of external framework numbering.
 
-## Repository structure
+## 11. Repository structure
 
 ```text
 iato-root/
@@ -178,5 +226,4 @@ iato-root/
 ├── ledger/              scripts/hash_result.py, scripts/append_ledger.py, storage/README.md
 └── requirements.txt
 ```
-
 ---

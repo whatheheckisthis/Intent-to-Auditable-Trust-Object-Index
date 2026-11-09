@@ -129,7 +129,7 @@ control:
 Organise client controls into seven IAM domains. The domains follow common IAM control families (NZISM, ISM, SOC 2 logical access) and the RBAC model. Each control record carries `control_id`, `domain` and `assertion`.
 
 | ID | Domain | What is evaluated |
-| -- | ------ | ----------------- |
+|---|---|---|
 | `IATO-SD` | Segregation of Duties | Conflicting entitlement combinations are not assigned |
 | `IATO-PA` | Privileged Access | Privileged identities, accounts and assignments are attributable, approved and reviewed |
 | `IATO-GV` | Identity Governance | Governance relationships, including certification decisions |

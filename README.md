@@ -39,7 +39,7 @@ For example, an exported SailPoint configuration might contain:
 </sailpoint>
 ```
 
-This is configuration and governance metadata, not simply a list of employees. The framework is interested in understanding the identity controls and governance relationships represented by the source system.
+This is configuration and governance metadata, not simply a list of employees. The framework is interested in understanding the identity controls and governance relationships represented by the source.
 
 ## Intended process
 
@@ -55,11 +55,11 @@ The design is hybrid: a scheduled export for SailPoint, and on-demand read-only 
 
 | Source | How data is obtained |
 |---|---|
-| SailPoint IGA | Scheduled export (XML) |
+| SailPoint IGA | Planned: scheduled XML export; ingestion is not implemented yet |
 | Microsoft Entra ID | Live read-only snapshot via collector script (Microsoft Graph API) |
 | Active Directory | Live read-only snapshot via collector script |
 
-The collectors actively pull current state (users, privileged role assignments and eligibility, MFA methods, Conditional Access policies and so on) rather than relying on a scheduled dump for Entra and AD.
+The collectors actively pull current state (users, privileged role assignments and eligibility, MFA methods, Conditional Access policies and so on) rather than relying on a scheduled dump for Entra ID and AD.
 
 ## Example: privileged account MFA
 
@@ -151,7 +151,7 @@ deny contains msg if {
 
 ## Evidence
 
-Each evaluation produces a structured record: control ID, evaluated identity state, assertion, outcome, timestamp and a SHA-256 digest. Records can be written to an immutable evidence store. Evidence describes findings only. It is not an access decision or remediation action.
+Each evaluation produces a structured record: control ID, evaluated identity state, assertion, outcome, timestamp and a SHA-256 digest. Records can be written to an immutable evidence store. Evidence shows what the framework evaluated and when; it does not prove that the source data was complete.
 
 ```yaml
 evidence:
@@ -166,8 +166,8 @@ evidence:
 
 ## Known limitations
 
-- **MFA is measured as registration, not enforcement.** The Entra collector sets `mfa_enabled` when the user has any registered method other than a password. Conditional Access policies are collected but not yet evaluated.
-- **Standing access.** The collector reads `roleAssignmentScheduleInstances`, which includes PIM-activated assignments. Filtering on `assignmentType == "Assigned"` is planned so just-in-time activations are not reported as standing.
+- **MFA is measured as registration, not enforcement.** The Entra collector sets `mfa_enabled` when the user has any registered method other than a password. Conditional Access policies are collected but not evaluated yet.
+- **Standing access.** The collector reads `roleAssignmentScheduleInstances`, which includes PIM-activated assignments. Filtering on `assignmentType == "Assigned"` is planned so just-in-time activations are not incorrectly treated as standing access.
 - **Group-assigned roles and non-user principals** are not yet expanded.
 - **Scale.** One authentication-methods request is made per user, with no throttling or retry handling.
 

@@ -1,7 +1,9 @@
 package iato.ac.iato_ac_012
 
-deny[msg] {
-    account := input.accounts[_]
+import rego.v1
+
+deny contains msg if {
+    some account in input.accounts
     # technical_parameter: accounts[].mfa_enabled
     account.privileged == true
     # technical_parameter: accounts[].mfa_enabled

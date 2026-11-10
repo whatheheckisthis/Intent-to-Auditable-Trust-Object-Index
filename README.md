@@ -23,7 +23,6 @@ CEF v1.0.0 Ingests multi-source IGA data (SailPoint, Entra ID, AD), normalises a
 [![Microsoft Graph](https://img.shields.io/badge/Microsoft-Graph-0078D4?logo=microsoft&logoColor=white)](https://learn.microsoft.com/en-us/graph/overview)
 [![Podman](https://img.shields.io/badge/Podman-ready-892CA0?logo=podman&logoColor=white)](https://podman.io/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-workload%20identity-326CE5?logo=kubernetes&logoColor=white)](https://azure.github.io/azure-workload-identity/)
-![Access](https://img.shields.io/badge/access-read--only-success)
 ![Auth](https://img.shields.io/badge/auth-certificate%20%7C%20workload%20identity-blue)
 
 

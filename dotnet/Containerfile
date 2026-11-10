@@ -1,0 +1,12 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY iato.csproj ./
+RUN dotnet restore iato.csproj
+COPY . ./
+RUN dotnet publish iato.csproj --configuration Release --no-restore --output /app/publish
+
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish ./
+USER 10001:10001
+ENTRYPOINT ["dotnet", "iato.dll"]

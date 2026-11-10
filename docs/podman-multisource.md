@@ -1,64 +1,84 @@
 # Multi-source local CLI with Podman
 
-This workflow combines read-only SailPoint IdentityIQ XML exports with a saved Entra snapshot, or collects Entra live through Microsoft Graph. It does not connect to SailPoint or execute SailPoint BeanShell.
+This workflow combines read-only SailPoint IdentityIQ XML exports with a saved Entra snapshot or an in-memory Graph token acquired by the CLI itself. It does not connect to SailPoint or execute SailPoint BeanShell.
+
+## Token acquisition and credential handling
+
+A static Graph bearer token is a weak fit for production because Microsoft Graph access tokens typically expire in approximately one hour. Prefer short-lived app credentials instead:
+
+- Local Podman: use an app registration with a certificate; mount the certificate/key from a Podman secret, and let the CLI fetch a token via Microsoft Entra OAuth as needed.
+- Kubernetes: prefer Azure AD workload identity (federated token from the service account). In that model there is no stored client secret at all.
+- Use a Secret only as a last resort when workload identity or certificate-based local auth is not available.
+
+The CLI should acquire a token just-in-time for Graph, and refresh it before expiry. Keep the token in memory only; do not write it to disk or echo it to stdout.
+
+Scope the app registration to read-only Graph permissions only. Minimum examples include:
+
+- `User.Read.All`
+- `Policy.Read.All`
+- `RoleManagement.Read.Directory`
+- `Directory.Read.All`
+- `GroupMember.Read.All`
+
+With the current collector pattern, keep the app registration narrow and only request the permissions required by the specific endpoints used by the workflow.
+
+## Local app-registration example
+
+```bash
+# Example: a mounted certificate secret for local Podman use.
+podman secret create graph-cert ./graph-cert.pem
+
+# The app reads these env vars at runtime.
+export AZURE_TENANT_ID="<tenant-id>"
+export AZURE_CLIENT_ID="<app-registration-id>"
+export AZURE_CLIENT_CERTIFICATE_PATH="/run/secrets/graph-cert"
+
+podman run --rm \
+  --read-only \
+  --cap-drop=ALL \
+  --security-opt=no-new-privileges \
+  --secret graph-cert \
+  --env AZURE_TENANT_ID \
+  --env AZURE_CLIENT_ID \
+  --env AZURE_CLIENT_CERTIFICATE_PATH=/run/secrets/graph-cert \
+  --volume "$PWD/input:/input:ro,Z" \
+  iato:local \
+  --sailpoint-xml /input/iiq-export.xml \
+  --live-entra
+```
+
+Do not pass a raw bearer token on the command line or as an environment value. The CLI should prefer an app-registration certificate over a client secret, and should never accept static `MS_GRAPH_TOKEN` as the primary path.
+
+## Kubernetes pattern
+
+Use workload identity for Microsoft Entra access whenever possible.
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: iato-graph
+  annotations:
+    azure.workload.identity/client-id: "<app-registration-id>"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iato-config
+data:
+  sailpoint.xml: |
+    <sailpoint>...</sailpoint>
+```
+
+When workload identity is unavailable, a Secret may hold the certificate or private key, but it must be mounted in read-only mode and access should still be limited to the specific application.
 
 ## BeanShell safety
 
-IIQ `<Rule>` objects can contain BeanShell source. The normalizer treats XML and embedded source as untrusted input: it never evaluates, compiles, or invokes BeanShell. It emits only metadata and a SHA-256 digest/byte length for each embedded source block; source text is not copied into normalized output. Review and handle the original export as sensitive configuration because it may contain internal logic or data.
+The XML parser must continue to reject `DOCTYPE` and entity declarations and cap the XML size before parsing. BeanShell is never evaluated and never executed.
 
-The parser currently rejects `DOCTYPE` and entity declarations and caps XML documents at 10 MiB. If an IIQ export contains a DOCTYPE, use an approved export without it or strip only the declaration in a controlled preprocessing step; do not enable external entity resolution.
+## Offline mode
 
-## Build the image
-
-From the repository root:
-
-```sh
-podman build -t iato:local -f Containerfile .
-```
-
-The image is minimal, has no credentials baked in, and runs as an unprivileged user. The CLI writes normalized JSON to stdout; redirect it to a host file if needed.
-
-## SailPoint XML plus a saved Entra snapshot
-
-```sh
-mkdir -p input output
-chmod a+r input/iiq-export.xml input/entra-snapshot.json
-podman run --rm --read-only \
-  --volume "$PWD/input:/input:ro,Z" \
-  --userns=keep-id \
-  iato:local \
-  --sailpoint-xml /input/iiq-export.xml \
-  --entra-json /input/entra-snapshot.json \
-  > output/combined.json
-```
-
-On systems where SELinux labeling is not applicable, omit `,Z`. `:ro` ensures the container cannot alter source exports. The result keeps each source under `sources`; SailPoint governance metadata is not falsely merged with Entra user accounts.
-
-## Live Entra plus SailPoint XML
-
-Store the Graph token in a Podman secret, not in the command line, shell history, image, or XML file. Set the token file path inside the container:
-
-```sh
-podman secret create ms-graph-token ./ms-graph-token.txt
-podman run --rm --read-only \
-  --secret ms-graph-token \
-  --volume "$PWD/input:/input:ro,Z" \
-  --userns=keep-id \
-  --env MS_GRAPH_TOKEN_FILE=/run/secrets/ms-graph-token \
-  --env AZURE_TENANT_ID="$AZURE_TENANT_ID" \
-  iato:local \
-  --sailpoint-xml /input/iiq-export.xml \
-  --live-entra \
-  > output/combined.json
-```
-
-The Graph token needs only the Microsoft Graph application permissions required by the requested read-only endpoints, with admin consent where required. Restrict its lifetime and rotate it. The collector uses bounded concurrency, honors `Retry-After`, retries transient failures, and aborts rather than emitting a partial snapshot.
-
-The collector accepts `MS_GRAPH_TOKEN_FILE` (recommended for container use) or the legacy `MS_GRAPH_TOKEN` environment variable. Do not pass real credentials through `--env MS_GRAPH_TOKEN=...`.
-
-## Podman secrets, ConfigMaps, and Kubernetes
-
-Podman is the local container runtime here; Kubernetes ConfigMaps are not required. Keep non-secret XML exports on a read-only bind mount. Use Podman secrets for source credentials. If this CLI is later deployed in Kubernetes, ConfigMaps are suitable only for non-sensitive configuration, and Kubernetes Secrets (ideally backed by an external secret manager and encryption at rest) should hold credentials. Never put tokens or credentials in a ConfigMap or in the SailPoint XML export.
+For the offline path, keep the container isolated from the network with `--network=none` and mount only sanitized XML and the previously generated Entra snapshot.
 
 ## Local test
 

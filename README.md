@@ -1,7 +1,7 @@
-# IATO: IAM Control Evaluation Framework (CEF) v1.0.0
+# Control Evaluation Framework 
+## v1.0.0
 
-CEF v1.0.0 Ingests multi-source IGA data (SailPoint, Entra ID, AD), normalises access schemas, and executes RBAC control assertions (SoD, privileged access, migration drift). Generates auditable compliance evidence.
-
+>Entra ID collection (--live-entra) runs non-interactively via the Microsoft Graph API, replacing ad hoc az ad or PowerShell queries with a repeatable run. It pages users, directory roles, and conditional access policies via @odata.nextLink and uses $select to retrieve only required attributes. Output is normalised to a common JSON schema for SoD, privileged access and migration drift assertions. Auth: iato.pem or Kubernetes workload identity; tokens held in process memory only, never persisted.
 
 ## Contents
 - [Requirements](#requirements)

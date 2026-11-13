@@ -1,7 +1,9 @@
 # Control Evaluation Framework 
 ## v1.0.0
 
->Entra ID collection (--live-entra) runs non-interactively via the Microsoft Graph API, replacing ad hoc az ad or PowerShell queries with a repeatable run. It pages users, directory roles, and conditional access policies via @odata.nextLink and uses $select to retrieve only required attributes. Output is normalised to a common JSON schema for SoD, privileged access and migration drift assertions. Auth: iato.pem or Kubernetes workload identity; tokens held in process memory only, never persisted.
+v1.0.0. Entra ID collection `(--live-entra)` runs non-interactively and daemonless via the Microsoft Graph API, replacing 
+
+`ad hoc az ad` or PowerShell queries with a repeatable run. It pages users, directory role assignments, Conditional Access policies and groups via `@odata.nextLink`, and that is the complete set. `$select` retrieves only the required attributes. Output is normalised to a common JSON schema for separation-of-duties, privileged-access and migration-drift assertions. Auth is `iato.pem` or Kubernetes workload identity, with tokens held in process memory only, never persisted. Enforce least privilege on the app registration: `.default` returns whatever consent has been granted.
 
 ## Contents
 - [Requirements](#requirements)
